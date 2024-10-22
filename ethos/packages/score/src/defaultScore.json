@@ -1,0 +1,55 @@
+{
+    "expression": [
+        "1000",
+        "[Ethereum Address Age]",
+        "[Twitter Account Age]",
+        "[Review Impact]",
+        "[Vouched Ethereum Impact]",
+        "[Number of Vouchers Impact]",
+        "[Ethos Invitation Source Credibility]"
+    ],
+    "elements": {
+        "Ethereum Address Age": {
+            "Interval": [
+                "< 90: 0",
+                "< 365: 25",
+                "< 1461: 100",
+                "< 2922: 200",
+                "/> 2922: 250"
+            ]
+        },
+        "Twitter Account Age": {
+            "Interval": [
+                "< 90: -250",
+                "< 365: -50",
+                "< 730: 0",
+                "< 1461: 25",
+                "/> 1461: 50"
+            ]
+        },
+        "Ethos Invitation Source Credibility": {
+            "Range": [
+                -400,
+                400
+            ]
+        },
+        "Review Impact": {
+            "Range": [
+                -400,
+                400
+            ]
+        },
+        "Vouched Ethereum Impact": {
+            "Range": [
+                0,
+                400
+            ]
+        },
+        "Number of Vouchers Impact": {
+            "Range": [
+                0,
+                400
+            ]
+        }
+    }
+}

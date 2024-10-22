@@ -1,0 +1,17 @@
+{
+  "name": "@ethos/logger",
+  "version": "1.1.0",
+  "description": "Pino logger",
+  "main": "dist/index.js",
+  "types": "dist/index.d.ts",
+  "author": "Ethos Network Inc.",
+  "license": "UNLICENSED",
+  "scripts": {
+    "build": "tsc -b",
+    "watch": "tsc -w"
+  },
+  "dependencies": {
+    "pino": "^9.4.0",
+    "pino-pretty": "^11.2.2"
+  }
+}

@@ -1,0 +1,14 @@
+{
+  "dev": {
+    "address": "0xdF7e539A170337A697AdC64533Da5dCDa96B5a45",
+    "args": []
+  },
+  "testnet": {
+    "address": "0xaA79ccffF672D39647ab3BEAeeed9CBd5D0d4796",
+    "args": []
+  },
+  "prod": {
+    "address": "0x0000000000000000000000000000000000000000",
+    "args": []
+  }
+}

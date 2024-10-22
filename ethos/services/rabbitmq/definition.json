@@ -1,0 +1,47 @@
+{
+  "vhosts": [
+    {
+      "name": "/",
+      "description": "Default virtual host",
+      "tags": [],
+      "metadata": {
+        "description": "Default virtual host",
+        "tags": []
+      }
+    }
+  ],
+  "queues": [
+    {
+      "name": "score_calculation",
+      "vhost": "/",
+      "durable": true,
+      "auto_delete": false,
+      "arguments": {
+        "x-delivery-limit": 0,
+        "x-queue-type": "quorum"
+      }
+    },
+    {
+      "name": "blockchain_event_processing",
+      "vhost": "/",
+      "durable": true,
+      "auto_delete": false,
+      "arguments": {
+        "x-dead-letter-exchange": "",
+        "x-dead-letter-routing-key": "dead_letter_blockchain_event_processing",
+        "x-delivery-limit": 4,
+        "x-queue-type": "quorum",
+        "x-single-active-consumer": true
+      }
+    },
+    {
+      "name": "dead_letter_blockchain_event_processing",
+      "vhost": "/",
+      "durable": true,
+      "auto_delete": false,
+      "arguments": {
+        "x-queue-type": "quorum"
+      }
+    }
+  ]
+}

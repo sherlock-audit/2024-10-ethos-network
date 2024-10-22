@@ -1,0 +1,16 @@
+{
+  "recommendations": [
+    "DavidAnson.vscode-markdownlint",
+    "dbaeumer.vscode-eslint",
+    "EditorConfig.EditorConfig",
+    "JuanBlanco.solidity",
+    "mikestead.dotenv",
+    "NomicFoundation.hardhat-solidity",
+    "Prisma.prisma",
+    "stkb.rewrap",
+    "streetsidesoftware.code-spell-checker",
+    "tintinweb.solidity-visual-auditor",
+    "tintinweb.vscode-solidity-language",
+    "wayou.vscode-todo-highlight",
+  ]
+}

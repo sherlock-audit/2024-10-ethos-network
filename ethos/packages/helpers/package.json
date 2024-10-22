@@ -1,0 +1,17 @@
+{
+  "name": "@ethos/helpers",
+  "version": "1.0.0",
+  "description": "Common helpers and constants",
+  "main": "dist/index.js",
+  "types": "dist/index.d.ts",
+  "author": "Ethos Network Inc.",
+  "license": "UNLICENSED",
+  "scripts": {
+    "build": "tsc -b",
+    "watch": "tsc -w"
+  },
+  "dependencies": {
+    "viem": "^2.21.7",
+    "zod": "^3.23.8"
+  }
+}
