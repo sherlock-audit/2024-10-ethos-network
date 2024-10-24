@@ -1,0 +1,39 @@
+{
+  "name": "@ethos/contracts",
+  "version": "1.0.0",
+  "description": "Contracts for Ethos",
+  "main": "dist/src/index.js",
+  "types": "dist/src/index.d.ts",
+  "author": "Ethos Network Inc.",
+  "license": "UNLICENSED",
+  "scripts": {
+    "build": "npx hardhat compile && npm run generate-types && tsc -b",
+    "deploy": "npx tsx deploy.ts",
+    "generate-types": "typechain --target ethers-v6 'src/**/*-abi.json' --out-dir './src/types'",
+    "lint": "solhint 'contracts/**/*.sol' -c ../../.solhint.json -f table",
+    "test:contracts": "npx hardhat test",
+    "test:contracts:coverage": "npx hardhat coverage",
+    "watch": "tsc -w"
+  },
+  "devDependencies": {
+    "@ethos/logger": "^1.1.0",
+    "@nomicfoundation/hardhat-toolbox": "^5.0.0",
+    "@nomicfoundation/hardhat-verify": "^2.0.11",
+    "@openzeppelin/contracts": "^5.1.0",
+    "@openzeppelin/contracts-upgradeable": "^5.1.0",
+    "@openzeppelin/hardhat-upgrades": "^3.5.0",
+    "@prb/math": "^4.1.0",
+    "dotenv": "^16.4.5",
+    "hardhat": "^2.22.14",
+    "hardhat-gas-reporter": "^1.0.10",
+    "solhint": "^5.0.3",
+    "solidity-coverage": "^0.8.13",
+    "ts-node": "^10.9.2",
+    "type-fest": "^4.26.1",
+    "typechain": "^8.3.2"
+  },
+  "dependencies": {
+    "@ethos/env": "^1.0.0",
+    "viem": "^2.21.7"
+  }
+}

@@ -1,0 +1,99 @@
+services:
+  cache:
+    image: redis:7-alpine
+    ports:
+      - 6379:6379
+  db:
+    image: postgres:16-alpine
+    ports:
+      - 5432:5432
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+      POSTGRES_DB: ethos
+  rabbitmq:
+    build:
+      context: .
+      dockerfile: ./services/rabbitmq/Dockerfile
+      secrets:
+        - RABBITMQ_USER
+        - RABBITMQ_PASSWORD
+        - RABBITMQ_MANAGER_USER
+        - RABBITMQ_MANAGER_PASSWORD
+    ports:
+      - 5672:5672
+      - 15672:15672
+
+  # Monitoring
+  prometheus:
+    image: prom/prometheus
+    ports:
+      - 9090:9090
+    volumes:
+      - ./services/echo/prometheus.yml:/etc/prometheus/prometheus.yml
+    profiles:
+      - monitoring
+  elasticsearch:
+    image: elasticsearch:7.17.21
+    volumes:
+      - ./.elasticsearch:/etc/elasticsearch
+      - esdata:/usr/share/elasticsearch/data
+    ports:
+      - "9200:9200"
+      - "9300:9300"
+    environment:
+      - discovery.type=single-node
+      - xpack.security.enabled=false
+      - xpack.encryptedSavedObjects.enabled=false
+      - ES_JAVA_OPTS=-Xmx1g -Xms1g
+    networks:
+      - elk
+    profiles:
+      - monitoring
+  logstash:
+    image: logstash:7.17.21
+    volumes:
+      - ./.logs/:/var/log/:ro
+      - ./.logstash/pipeline/config.conf:/usr/share/logstash/pipeline/logstash-json.conf:ro
+    ports:
+      - "5001:5001"
+    environment:
+      LS_JAVA_OPTS: "-Xmx256m -Xms256m"
+    networks:
+      - elk
+    depends_on:
+      - elasticsearch
+    links:
+      - elasticsearch
+    profiles:
+      - monitoring
+  kibana:
+    image: kibana:7.17.21
+    volumes:
+      - ./.kibana/config/:/usr/share/kibana/config:ro
+    ports:
+      - "5601:5601"
+    networks:
+      - elk
+    depends_on:
+      - elasticsearch
+    links:
+      - elasticsearch
+    profiles:
+      - monitoring
+networks:
+  elk:
+    driver: bridge
+volumes:
+  esdata:
+    driver: local
+
+secrets:
+  RABBITMQ_USER:
+    file: ./services/rabbitmq/local-secrets/RABBITMQ_USER
+  RABBITMQ_PASSWORD:
+    file: ./services/rabbitmq/local-secrets/RABBITMQ_PASSWORD
+  RABBITMQ_MANAGER_USER:
+    file: ./services/rabbitmq/local-secrets/RABBITMQ_MANAGER_USER
+  RABBITMQ_MANAGER_PASSWORD:
+    file: ./services/rabbitmq/local-secrets/RABBITMQ_MANAGER_PASSWORD
