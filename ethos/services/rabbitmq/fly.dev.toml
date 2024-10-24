@@ -1,0 +1,55 @@
+# See https://fly.io/docs/reference/configuration/ for information about how to use this file.
+
+app = 'trust-ethos-rabbitmq-dev'
+primary_region = 'dfw'
+kill_signal = 'SIGINT'
+kill_timeout = '5s'
+
+[build]
+
+# rabbitmq main
+[[services]]
+  http_checks = []
+  internal_port = 5672
+  protocol = "tcp"
+  script_checks = []
+
+  [[services.ports]]
+    handlers = ["http"]
+    port = 5672
+
+  [[services.tcp_checks]]
+    grace_period = "1s"
+    interval = "15s"
+    restart_limit = 0
+    timeout = "10s"
+
+# rabbitmq admin
+[[services]]
+  http_checks = []
+  internal_port = 15672
+  protocol = "tcp"
+  script_checks = []
+
+  [[services.ports]]
+    handlers = ["tls", "http"]
+    port = 15672
+
+  [[services.tcp_checks]]
+    grace_period = "1s"
+    interval = "15s"
+    restart_limit = 0
+    timeout = "10s"
+
+[metrics]
+  port = 15692
+  path = "/metrics"
+
+[[vm]]
+  cpu_kind = "shared"
+  cpus = 2
+  memory_mb = 2048
+
+[mounts]
+  source = "rabbitmq_storage"
+  destination = "/var/lib/rabbitmq/mnesia"
