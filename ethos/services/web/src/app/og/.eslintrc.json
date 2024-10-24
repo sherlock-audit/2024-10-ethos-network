@@ -1,7 +1,0 @@
-{
-    "rules": {
-        "react/forbid-dom-props": "off",
-        "react/forbid-component-props": "off",
-        "@next/next/no-img-element": "off"
-    }
-}
