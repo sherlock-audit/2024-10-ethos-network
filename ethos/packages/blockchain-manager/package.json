@@ -1,0 +1,31 @@
+{
+  "name": "@ethos/blockchain-manager",
+  "version": "1.0.0",
+  "description": "Encapsulates the blockchain interaction logic with Ethos contracts",
+  "main": "dist/index.js",
+  "module": "dist/index.mjs",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.mjs",
+      "require": "./dist/index.js"
+    }
+  },
+  "author": "Ethos Network Inc.",
+  "license": "UNLICENSED",
+  "scripts": {
+    "build": "tsup --config ../tsup.config.ts",
+    "watch": "tsup --config ../tsup.config.ts --clean false --watch"
+  },
+  "dependencies": {
+    "@ethos/contracts": "^1.0.0",
+    "@ethos/env": "^1.0.0",
+    "@ethos/helpers": "^1.0.0",
+    "async-retry": "^1.3.3",
+    "ethers": "^6.13.4",
+    "viem": "^2.21.7"
+  },
+  "devDependencies": {
+    "@types/async-retry": "^1.4.9"
+  }
+}

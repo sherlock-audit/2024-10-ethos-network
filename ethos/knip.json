@@ -1,0 +1,20 @@
+{
+  "ignore": [
+    "**/dist/**",
+    "packages/contracts/.solcover.js",
+    "packages/contracts/hardhat.config.ts",
+    "packages/contracts/scripts/**",
+    "packages/contracts/test/**",
+    "packages/contracts/typechain-types/**",
+    "scripts/**"
+  ],
+  "ignoreDependencies": [
+    "@openzeppelin/contracts",
+    "@openzeppelin/contracts-upgradeable",
+    "@prb/math",
+    "concurrently",
+    "glob",
+    "pino-pretty",
+    "ts-node"
+  ]
+}

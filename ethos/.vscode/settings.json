@@ -1,0 +1,62 @@
+{
+  "[json]": {
+    "editor.defaultFormatter": "vscode.json-language-features",
+    "editor.formatOnSave": true,
+    "editor.indentSize": 2,
+  },
+  "[prisma]": {
+    "editor.defaultFormatter": "Prisma.prisma",
+    "editor.formatOnSave": true
+  },
+  "[solidity]": {
+    "editor.formatOnSave": true,
+    "editor.defaultFormatter": "NomicFoundation.hardhat-solidity"
+  },
+  "cSpell.language": "en,en-US",
+  "cSpell.words": [
+    "antd",
+    "aprs",
+    "BASESCAN",
+    "blockie",
+    "blockies",
+    "cssinjs",
+    "downvoted",
+    "downvotes",
+    "emporos",
+    "knip",
+    "lookback",
+    "moralis",
+    "nextjs",
+    "picocolors",
+    "rainbowkit",
+    "sepolia",
+    "setex",
+    "Solhint",
+    "sourcify",
+    "Statsig",
+    "steth",
+    "tanstack",
+    "typecheck",
+    "Unvote",
+    "unvouch",
+    "unvouched",
+    "Upvote",
+    "upvoted",
+    "upvotes",
+    "viem",
+    "vitalii",
+    "wagmi"
+  ],
+  "editor.codeActionsOnSave": {
+    "source.fixAll.eslint": "explicit"
+  },
+  "eslint.workingDirectories": [
+    {
+      "mode": "auto"
+    }
+  ],
+  "todohighlight.isEnable": true,
+  "solidity.linter": "solhint",
+  "solidity.packageDefaultDependenciesDirectory": "./node_modules",
+  "solidity.compileUsingRemoteVersion": "v0.8.25+commit.b61c2a91",
+}

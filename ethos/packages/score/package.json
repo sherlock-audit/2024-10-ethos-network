@@ -1,0 +1,32 @@
+{
+  "name": "@ethos/score",
+  "version": "1.0.0",
+  "description": "Domain Specific Language (DSL) for calculating Ethos Credibility Scores",
+  "main": "dist/index.js",
+  "module": "dist/index.mjs",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.mjs",
+      "require": "./dist/index.js"
+    }
+  },
+  "types": "dist/index.d.ts",
+  "scripts": {
+    "build": "tsup --config ../tsup.config.ts",
+    "watch": "tsup --config ../tsup.config.ts --clean false --watch"
+  },
+  "keywords": [
+    "score",
+    "calculation",
+    "model"
+  ],
+  "author": "Ethos Network Inc.",
+  "license": "UNLICENSED",
+  "dependencies": {
+    "lodash": "^4.17.21"
+  },
+  "devDependencies": {
+    "type-fest": "^4.26.1"
+  }
+}
