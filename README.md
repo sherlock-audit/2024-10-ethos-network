@@ -111,7 +111,7 @@ ___
 # Audit scope
 
 
-[ethos @ fa30788af7b492a534ac7ecf5c6b6969af5e9e81](https://github.com/trust-ethos/ethos/tree/fa30788af7b492a534ac7ecf5c6b6969af5e9e81)
+[ethos @ 946e931acc97167a9bd932d02b9420cdf37a701e](https://github.com/trust-ethos/ethos/tree/946e931acc97167a9bd932d02b9420cdf37a701e)
 - [ethos/packages/contracts/contracts/EthosAttestation.sol](ethos/packages/contracts/contracts/EthosAttestation.sol)
 - [ethos/packages/contracts/contracts/EthosDiscussion.sol](ethos/packages/contracts/contracts/EthosDiscussion.sol)
 - [ethos/packages/contracts/contracts/EthosProfile.sol](ethos/packages/contracts/contracts/EthosProfile.sol)
