@@ -7,9 +7,13 @@ import {
   type VouchFunds,
 } from '@ethos/blockchain-manager';
 import { type Address } from 'viem';
-import { type BlockchainEvent } from './blockchain-event';
-import { type ReplySummary } from './reply';
-import { type Relationship } from './transaction';
+import { type BlockchainEvent } from './blockchain-event.js';
+import { type ReplySummary } from './reply.js';
+import { type Relationship } from './transaction.js';
+
+export const BASE_REVIEW_XP_GAIN = 5;
+export const INVITE_ACCEPTED_XP_GAIN = 25_000;
+export const BASE_VOUCH_DAY_XP_GAIN = 500;
 
 export const attestationActivity = 'attestation';
 export const invitationAcceptedActivity = 'invitation-accepted';
@@ -65,7 +69,12 @@ export type ActivityActor = {
   avatar: string | null;
   description: string | null;
   score: number;
+  scoreXpMultiplier: number;
   primaryAddress: Address;
+};
+
+export type ActivityActorWithXp = ActivityActor & {
+  totalXp: number;
 };
 
 export type RecentInteractionActivityActor = ActivityActor & {

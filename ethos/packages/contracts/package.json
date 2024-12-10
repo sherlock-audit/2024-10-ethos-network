@@ -3,38 +3,34 @@
   "version": "1.0.0",
   "description": "Contracts for Ethos",
   "main": "dist/index.js",
-  "module": "dist/index.mjs",
-  "exports": {
-    ".": {
-      "types": "./dist/index.d.ts",
-      "import": "./dist/index.mjs",
-      "require": "./dist/index.js"
-    }
-  },
+  "types": "dist/index.d.ts",
+  "type": "module",
   "author": "Ethos Network Inc.",
   "license": "UNLICENSED",
   "scripts": {
-    "build": "npx hardhat compile && npm run generate-types && tsup",
+    "build": "NODE_OPTIONS='--no-warnings=ExperimentalWarning --experimental-loader ts-node/esm/transpile-only' npx hardhat compile && npm run generate-types && tsc -p tsconfig.build.json",
     "deploy": "npx tsx deploy.ts",
-    "generate-types": "typechain --target ethers-v6 'src/**/*-abi.json' --out-dir './src/types'",
+    "generate-types": "typechain --node16-modules --target ethers-v6 'src/**/*-abi.json' --out-dir './src/types'",
     "lint": "solhint 'contracts/**/*.sol' -c ../../.solhint.json -f table",
-    "test:contracts": "npx hardhat test",
-    "test:contracts:coverage": "npx hardhat coverage",
-    "watch": "tsup --clean false --watch"
+    "hardhat": "NODE_OPTIONS='--no-warnings=ExperimentalWarning --experimental-loader ts-node/esm/transpile-only' npx hardhat",
+    "test:contracts": "NODE_OPTIONS='--no-warnings=ExperimentalWarning --experimental-loader ts-node/esm/transpile-only' npx hardhat test",
+    "test:contracts:coverage": "NODE_OPTIONS='--no-warnings=ExperimentalWarning --experimental-loader ts-node/esm/transpile-only' npx hardhat coverage",
+    "update-abi": "tsx scripts/update-contract-abi.ts",
+    "watch": "tsc -p tsconfig.build.json -w"
   },
   "devDependencies": {
     "@ethos/logger": "^1.1.0",
     "@nomicfoundation/hardhat-toolbox": "^5.0.0",
-    "@nomicfoundation/hardhat-verify": "^2.0.11",
+    "@nomicfoundation/hardhat-verify": "^2.0.12",
     "@openzeppelin/contracts": "^5.1.0",
     "@openzeppelin/contracts-upgradeable": "^5.1.0",
-    "@openzeppelin/hardhat-upgrades": "^3.5.0",
+    "@openzeppelin/hardhat-upgrades": "^3.6.0",
     "@prb/math": "^4.1.0",
     "dotenv": "^16.4.5",
-    "hardhat": "^2.22.15",
+    "hardhat": "^2.22.16",
     "hardhat-gas-reporter": "^1.0.10",
     "solhint": "^5.0.3",
-    "solidity-coverage": "^0.8.13",
+    "solidity-coverage": "^0.8.14",
     "ts-node": "^10.9.2",
     "type-fest": "^4.26.1",
     "typechain": "^8.3.2",
@@ -42,6 +38,6 @@
   },
   "dependencies": {
     "@ethos/env": "^1.0.0",
-    "viem": "^2.21.7"
+    "viem": "^2.21.51"
   }
 }

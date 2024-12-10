@@ -1,5 +1,5 @@
 import { type Entries } from 'type-fest';
-import { scoreRanges } from './score.constant';
+import { scoreRanges } from './score.constant.js';
 import {
   type CredibilityFactor,
   type ScoreLevel,
@@ -8,8 +8,8 @@ import {
   isLookupNumber,
   isScoreCalculation,
   isConstantValueElement,
-} from './score.types';
-import { calculateElement } from './scoreElements';
+} from './score.types.js';
+import { calculateElement } from './scoreElements.js';
 
 /**
  * Converts a numerical score to its corresponding ScoreLevel category
@@ -70,7 +70,7 @@ export function convertScoreElementToCredibilityFactor(
  * @returns The range of the score element, as a { min, max } object
  * @throws Error if the score element type is invalid
  */
-function elementRange(element: ScoreElement): { min: number; max: number } {
+export function elementRange(element: ScoreElement): { min: number; max: number } {
   if (isLookupInterval(element)) {
     const min = element.ranges.reduce((min, r) => Math.min(min, r.score), 1000);
     const max = element.ranges.reduce((max, r) => Math.max(max, r.score), -1000);

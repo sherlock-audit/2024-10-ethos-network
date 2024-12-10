@@ -103,9 +103,6 @@ The following are function modifiers used in `ethosVote`:
 - **whenNotPaused**
   Ensures that the contract is not paused before executing certain functions. This is a standard pause mechanism often used for emergency stops (see AccessControl docs).
 
-- **isValidTarget(address target)**
-  Ensures that the `targetContract` provided is a valid Ethos contract by verifying with the `contractAddressManager`. Reverts with `InvalidTargetContract` if the contract is not valid.
-
 ---
 
 ### External/Public Functions

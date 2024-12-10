@@ -6,7 +6,7 @@ import {
   type ContractTransactionResponse,
 } from 'ethers';
 import { getAddress, parseEther, type Address } from 'viem';
-import { type ProfileId } from '../types';
+import { type ProfileId } from '../types.js';
 
 export class InsufficientVotesOwnedError extends Error {
   profileId: number;
@@ -71,8 +71,38 @@ export class ReputationMarket {
     return await this.contract.getUserVotes(user, profileId);
   }
 
-  async createMarket(profileId: number, value: bigint): Promise<ContractTransactionResponse> {
-    return await this.contract.createMarket(profileId, { value });
+  async createMarket(value: bigint): Promise<ContractTransactionResponse> {
+    return await this.contract.createMarket({ value });
+  }
+
+  async createMarketWithConfigAdmin(
+    marketOwner: Address,
+    marketConfigIndex: number,
+    initialLiquidity: bigint,
+  ): Promise<ContractTransactionResponse> {
+    return await this.contract.createMarketWithConfigAdmin(marketOwner, marketConfigIndex, {
+      value: initialLiquidity,
+    });
+  }
+
+  async getMarketConfigs(): Promise<
+    Array<{ configIndex: number; initialLiquidity: bigint; initialVotes: bigint }>
+  > {
+    const marketConfigCount = await this.contract.getMarketConfigCount();
+
+    const configs = await Promise.all(
+      Array.from({ length: Number(marketConfigCount) }, async (_, i) => {
+        const config = await this.contract.marketConfigs(i);
+
+        return {
+          configIndex: i,
+          initialLiquidity: config.initialLiquidity,
+          initialVotes: config.initialVotes,
+        };
+      }),
+    );
+
+    return configs;
   }
 
   async buyVotes(

@@ -1,0 +1,49 @@
+generator client {
+  provider      = "prisma-client-js"
+  output        = "../../../../node_modules/@prisma-timescale/client"
+  // Make sure to generate Prisma client for Alpine correctly
+  binaryTargets = ["native", "linux-musl-openssl-3.0.x"]
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("TIMESCALE_DB_URL")
+}
+
+model MarketPrices {
+  marketProfileId    Int
+  createdAt          DateTime @default(now()) @db.Timestamptz(3)
+  trustPrice         Decimal  @db.Decimal(78, 0)
+  distrustPrice      Decimal  @db.Decimal(78, 0)
+  deltaTrustPrice    Decimal  @db.Decimal(78, 0)
+  deltaDistrustPrice Decimal  @db.Decimal(78, 0)
+
+  @@id([marketProfileId, createdAt])
+  // Index for the timescaledb hypertable. Mirroring here to prevent prisma from dropping it after a migration reset.
+  @@index([createdAt(sort: Desc)], map: "market_prices_createdAt_idx")
+  @@map("market_prices")
+}
+
+enum EventType {
+  BUY
+  SELL
+}
+
+enum VoteType {
+  TRUST
+  DISTRUST
+}
+
+model MarketVotes {
+  marketProfileId Int
+  createdAt       DateTime  @default(now()) @db.Timestamptz(3)
+  voteType        VoteType
+  amount          Int
+  funds           Decimal   @db.Decimal(78, 0)
+  eventType       EventType
+
+  @@id([marketProfileId, createdAt])
+  // Index for the timescaledb hypertable. Mirroring here to prevent prisma from dropping it after a migration reset.
+  @@index([createdAt(sort: Desc)], map: "market_votes_createdAt_idx")
+  @@map("market_votes")
+}

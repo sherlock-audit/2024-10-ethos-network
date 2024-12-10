@@ -1,5 +1,5 @@
-import { type ScoreElementBase, type ElementInputs, type ScoreElement } from './score.types';
-import { calculateElement } from './scoreElements';
+import { type ScoreElementBase, type ElementInputs, type ScoreElement } from './score.types.js';
+import { calculateElement } from './scoreElements.js';
 
 /**
  * Applies a mathematical operation against a set of score components.
@@ -15,7 +15,11 @@ export function calculateScore(
   rootCalculation: ScoreCalculation,
   inputs: ElementInputs,
 ): { score: number } {
-  return { score: Math.round(calculateElement(rootCalculation, inputs).score) };
+  const { score } = calculateElement(rootCalculation, inputs);
+
+  if (score < 0) return { score: 0 };
+
+  return { score: Math.round(score) };
 }
 
 const validOperations = ['+', '-', '*', '/', '^', 'log', 'sqrt', 'abs', 'ceil', 'floor'] as const;

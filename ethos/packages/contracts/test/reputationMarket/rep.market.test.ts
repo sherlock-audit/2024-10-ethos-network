@@ -1,10 +1,12 @@
-import { loadFixture } from '@nomicfoundation/hardhat-toolbox/network-helpers';
+import { loadFixture } from '@nomicfoundation/hardhat-toolbox/network-helpers.js';
 import { expect } from 'chai';
-import { ethers } from 'hardhat';
-import { type ReputationMarket } from '../../typechain-types';
-import { createDeployer, type EthosDeployer } from '../utils/deployEthos';
-import { type EthosUser } from '../utils/ethosUser';
-import { DEFAULT, getExpectedVotePrice, MarketUser } from './utils';
+import hre from 'hardhat';
+import { type ReputationMarket } from '../../typechain-types/index.js';
+import { createDeployer, type EthosDeployer } from '../utils/deployEthos.js';
+import { type EthosUser } from '../utils/ethosUser.js';
+import { DEFAULT, getExpectedVotePrice, MarketUser } from './utils.js';
+
+const { ethers } = hre;
 
 describe('ReputationMarket', () => {
   let deployer: EthosDeployer;
@@ -30,11 +32,11 @@ describe('ReputationMarket', () => {
 
     reputationMarket = deployer.reputationMarket.contract;
     DEFAULT.reputationMarket = reputationMarket;
-    DEFAULT.profileId = Number(ethosUserA.profileId);
-
+    DEFAULT.profileId = ethosUserA.profileId;
     await reputationMarket
       .connect(deployer.ADMIN)
-      .createMarket(DEFAULT.profileId, { value: DEFAULT.initialLiquidity });
+      .setUserAllowedToCreateMarket(DEFAULT.profileId, true);
+    await reputationMarket.connect(userA.signer).createMarket({ value: DEFAULT.initialLiquidity });
   });
 
   describe('createMarket', () => {
@@ -54,22 +56,16 @@ describe('ReputationMarket', () => {
       expect(distrustVotes).to.equal(0);
     });
 
-    it('should revert with InvalidProfileId when creating a market with profileId 0', async () => {
-      await expect(
-        reputationMarket.connect(userA.signer).createMarket(0, { value: DEFAULT.initialLiquidity }),
-      ).to.be.revertedWithCustomError(reputationMarket, 'InvalidProfileId');
-    });
-
     it('should revert with MarketAlreadyExists when creating a market that already exists', async () => {
       await expect(
-        reputationMarket.connect(deployer.ADMIN).createMarket(DEFAULT.profileId, DEFAULT.value),
+        reputationMarket.connect(userA.signer).createMarket({ value: DEFAULT.initialLiquidity }),
       )
         .to.be.revertedWithCustomError(reputationMarket, 'MarketAlreadyExists')
         .withArgs(DEFAULT.profileId);
     });
 
     it('should revert with MarketDoesNotExist when buying votes for a non-existent market', async () => {
-      const nonExistentProfileId = 999;
+      const nonExistentProfileId = 999n;
       await expect(userA.buyOneVote({ profileId: nonExistentProfileId }))
         .to.be.revertedWithCustomError(reputationMarket, 'MarketDoesNotExist')
         .withArgs(nonExistentProfileId);
@@ -78,7 +74,9 @@ describe('ReputationMarket', () => {
     it('should allow ADMIN to create a market for any profileId', async () => {
       await reputationMarket
         .connect(deployer.ADMIN)
-        .createMarket(ethosUserB.profileId, { value: DEFAULT.initialLiquidity });
+        .createMarketWithConfigAdmin(ethosUserB.signer.address, 0, {
+          value: DEFAULT.initialLiquidity,
+        });
       const market = await reputationMarket.getMarket(ethosUserB.profileId);
 
       expect(market.profileId).to.equal(ethosUserB.profileId);
@@ -86,42 +84,31 @@ describe('ReputationMarket', () => {
       expect(market.distrustVotes).to.equal(1);
     });
 
-    it('should revert with InvalidProfileId when ADMIN attempts to create a market for a profile that does not exist', async () => {
-      const nonExistentProfileId = 999;
-
+    it('should revert when ADMIN attempts to create a market for an address that does not have a profile', async () => {
+      const newWallet = await deployer.newWallet();
       await expect(
-        reputationMarket
-          .connect(deployer.ADMIN)
-          .createMarket(nonExistentProfileId, { value: DEFAULT.initialLiquidity }),
-      ).to.be.revertedWithCustomError(reputationMarket, 'InvalidProfileId');
+        reputationMarket.connect(deployer.ADMIN).createMarketWithConfigAdmin(newWallet.address, 0, {
+          value: DEFAULT.initialLiquidity,
+        }),
+      ).to.be.revertedWithCustomError(deployer.ethosProfile.contract, 'ProfileNotFoundForAddress');
     });
 
     it('should not allow ADMIN to create a market for an invalid profileId', async () => {
       await reputationMarket
         .connect(deployer.ADMIN)
-        .createMarket(ethosUserB.profileId, { value: DEFAULT.initialLiquidity });
+        .createMarketWithConfigAdmin(ethosUserB.signer.address, 0, {
+          value: DEFAULT.initialLiquidity,
+        });
       const market = await reputationMarket.getMarket(ethosUserB.profileId);
 
       expect(market.profileId).to.equal(ethosUserB.profileId);
       expect(market.trustVotes).to.equal(1);
       expect(market.distrustVotes).to.equal(1);
     });
-
-    it('should revert with MarketCreationUnauthorized when creating a market for a different profileId', async () => {
-      await reputationMarket
-        .connect(deployer.ADMIN)
-        .setUserAllowedToCreateMarket(ethosUserA.profileId, true);
-      const otherProfileId = ethosUserB.profileId;
-      await expect(
-        reputationMarket.connect(userA.signer).createMarket(otherProfileId, DEFAULT.value),
-      )
-        .to.be.revertedWithCustomError(reputationMarket, 'MarketCreationUnauthorized')
-        .withArgs(1, userA.signer.address, otherProfileId);
-    });
   });
 
   it('should allow a user to buy unlimited positive votes', async () => {
-    const amountToBuy = ethers.parseEther('0.1');
+    const amountToBuy = DEFAULT.buyAmount * 100n;
 
     const { trustVotes: positive, distrustVotes: negative } = await userA.buyVotes({
       buyAmount: amountToBuy,
@@ -220,7 +207,7 @@ describe('ReputationMarket', () => {
   });
 
   it('should allow a user to sell multiple votes', async () => {
-    const amountToBuy = ethers.parseEther('0.01');
+    const amountToBuy = DEFAULT.buyAmount * 100n;
 
     await userA.buyVotes({ buyAmount: amountToBuy });
     const { trustVotes: initialPositiveVotes, balance: initialBalance } = await userA.getVotes();
@@ -254,6 +241,59 @@ describe('ReputationMarket', () => {
     expect(userVotes.profileId).to.equal(DEFAULT.profileId);
     expect(userVotes.trustVotes).to.equal(1n);
     expect(userVotes.distrustVotes).to.equal(2n);
+  });
+
+  it('should emit VotesBought event with correct parameters when buying votes', async () => {
+    const buyAmount = ethers.parseEther('0.1');
+    const { simulatedVotesBought, simulatedFundsPaid, simulatedNewVotePrice } =
+      await userA.simulateBuy({ buyAmount });
+    const minVotePrice = await reputationMarket.getVotePrice(DEFAULT.profileId, DEFAULT.isPositive);
+
+    const address = await userA.signer.getAddress();
+    const transaction = await reputationMarket
+      .connect(userA.signer)
+      .buyVotes(DEFAULT.profileId, DEFAULT.isPositive, simulatedVotesBought, 1n, {
+        value: buyAmount,
+      });
+    await expect(transaction)
+      .to.emit(reputationMarket, 'VotesBought')
+      .withArgs(
+        DEFAULT.profileId,
+        address,
+        DEFAULT.isPositive,
+        simulatedVotesBought,
+        simulatedFundsPaid,
+        (await transaction.getBlock())?.timestamp,
+        minVotePrice,
+        simulatedNewVotePrice,
+      );
+  });
+
+  it('should emit VotesSold event with correct parameters when selling votes', async () => {
+    const buyAmount = ethers.parseEther('0.1');
+    await userA.buyVotes({ buyAmount });
+
+    const { simulatedVotesSold, simulatedFundsReceived, simulatedNewVotePrice } =
+      await userA.simulateSell({ sellVotes: DEFAULT.sellVotes });
+    const maxVotePrice = await reputationMarket.getVotePrice(DEFAULT.profileId, DEFAULT.isPositive);
+
+    const address = await userA.signer.getAddress();
+    const transaction = await reputationMarket
+      .connect(userA.signer)
+      .sellVotes(DEFAULT.profileId, DEFAULT.isPositive, DEFAULT.sellVotes);
+
+    await expect(transaction)
+      .to.emit(reputationMarket, 'VotesSold')
+      .withArgs(
+        DEFAULT.profileId,
+        address,
+        DEFAULT.isPositive,
+        simulatedVotesSold,
+        simulatedFundsReceived,
+        (await transaction.getBlock())?.timestamp,
+        simulatedNewVotePrice,
+        maxVotePrice,
+      );
   });
 
   describe('Slippage', () => {
@@ -308,16 +348,14 @@ describe('ReputationMarket', () => {
     });
 
     it('should succeed when price marginally changes from another user buying', async () => {
-      // User A prepares to buy some votes.
-      const buyAmount = ethers.parseEther('0.1');
+      // User A prepares to buy some votes
+      const buyAmount = DEFAULT.buyAmount * 100n;
       const { simulatedVotesBought } = await userA.simulateBuy({ buyAmount });
 
-      // But userB bought a few votes, marginally changing the price.
-      await userB.buyVotes({
-        buyAmount: ethers.parseEther('0.005'),
-      });
+      // UserB makes a tiny purchase to create minimal price impact
+      await userB.buyVotes();
 
-      // This should fail with 1% slippage tolerance
+      // Should succeed with 1% slippage tolerance
       await expect(
         userA.buyVotes({
           buyAmount,
@@ -325,6 +363,73 @@ describe('ReputationMarket', () => {
           slippageBasisPoints: 100, // 100 basis points = 1%
         }),
       ).to.not.be.reverted;
+    });
+
+    it('should succeed with moderate price changes when given sufficient slippage', async () => {
+      // User A prepares to buy some votes
+      const buyAmount = DEFAULT.buyAmount * 100n;
+      const { simulatedVotesBought } = await userA.simulateBuy({ buyAmount });
+
+      // UserB makes a moderate purchase that impacts price
+      await userB.buyVotes({
+        buyAmount: DEFAULT.buyAmount * 5n,
+      });
+
+      // Should succeed with 5% slippage tolerance
+      await expect(
+        userA.buyVotes({
+          buyAmount,
+          expectedVotes: simulatedVotesBought,
+          slippageBasisPoints: 500, // 500 basis points = 5%
+        }),
+      ).to.not.be.reverted;
+    });
+
+    describe('Slippage rounding at low volumes', () => {
+      const slippageBasisPoints = 100; // 1% slippage tolerance
+      const magicNumber = 11n;
+      let buyAmount: bigint;
+      let expectedVotes: bigint;
+
+      beforeEach(async () => {
+        buyAmount =
+          (await reputationMarket.getVotePrice(DEFAULT.profileId, DEFAULT.isPositive)) *
+          magicNumber;
+        const { simulatedVotesBought } = await userA.simulateBuy({ buyAmount });
+        expectedVotes = simulatedVotesBought;
+        // Verify baseline assumption
+        expect(simulatedVotesBought).to.equal(7n);
+      });
+
+      it('should fail when actual votes are less than expected', async () => {
+        await expect(
+          userA.buyVotes({
+            buyAmount,
+            expectedVotes: expectedVotes + 1n, // Expecting 8 but will get 7
+            slippageBasisPoints,
+          }),
+        ).to.be.revertedWithCustomError(reputationMarket, 'SlippageLimitExceeded');
+      });
+
+      it('should succeed when actual votes match expected', async () => {
+        await expect(
+          userA.buyVotes({
+            buyAmount,
+            expectedVotes, // Expecting 7 and will get 7
+            slippageBasisPoints,
+          }),
+        ).to.not.be.reverted;
+      });
+
+      it('should succeed when actual votes are more than expected', async () => {
+        await expect(
+          userA.buyVotes({
+            buyAmount,
+            expectedVotes: expectedVotes - 1n, // Expecting 6 but will get 7
+            slippageBasisPoints,
+          }),
+        ).to.not.be.reverted;
+      });
     });
   });
 
@@ -460,6 +565,44 @@ describe('ReputationMarket', () => {
       expect(initialUserVotes.trustVotes).to.equal(finalUserVotes.trustVotes);
       expect(initialUserVotes.distrustVotes).to.equal(finalUserVotes.distrustVotes);
     });
+
+    it('should return correct min/max prices when simulating buying votes', async () => {
+      const amountToBuy = ethers.parseEther('0.1');
+      const initialPrice = await reputationMarket.getVotePrice(
+        DEFAULT.profileId,
+        DEFAULT.isPositive,
+      );
+
+      const { simulatedMinVotePrice, simulatedMaxVotePrice } = await userA.simulateBuy({
+        buyAmount: amountToBuy,
+      });
+      await userA.buyVotes({ buyAmount: amountToBuy });
+      const expectedNewPrice = await getExpectedVotePrice({ buyAmount: amountToBuy });
+
+      expect(simulatedMinVotePrice).to.equal(initialPrice);
+      expect(simulatedMaxVotePrice).to.equal(expectedNewPrice);
+    });
+
+    it('should return correct min/max prices when simulating selling votes', async () => {
+      // First buy some votes to sell
+      const amountToBuy = ethers.parseEther('0.1');
+      await userA.buyVotes({ buyAmount: amountToBuy });
+
+      const initialPrice = await reputationMarket.getVotePrice(
+        DEFAULT.profileId,
+        DEFAULT.isPositive,
+      );
+
+      const { simulatedMinVotePrice, simulatedMaxVotePrice } = await userA.simulateSell({
+        sellVotes: 5n,
+      });
+
+      await userA.sellVotes({ sellVotes: 5n });
+      const expectedNewPrice = await getExpectedVotePrice();
+
+      expect(simulatedMaxVotePrice).to.equal(initialPrice);
+      expect(simulatedMinVotePrice).to.equal(expectedNewPrice);
+    });
   });
 
   describe('Participants', () => {
@@ -520,7 +663,7 @@ describe('ReputationMarket', () => {
       expect(userCount).to.equal(1);
     });
 
-    it('should remove a user from participants when selling all votes', async () => {
+    it('should show a user as a participant even after selling all votes', async () => {
       // Buy votes
       await userA.buyOneVote();
 
@@ -532,16 +675,14 @@ describe('ReputationMarket', () => {
       // Sell all votes
       await userA.sellOneVote();
 
-      // Check that the user is no longer a participant
+      // Check that the user is still a participant
       expect(
         await reputationMarket.isParticipant(DEFAULT.profileId, await userA.signer.getAddress()),
-      ).to.equal(false);
-
-      // Note: The user's address will still be in the participants array, but isParticipant will be false
+      ).to.equal(true);
     });
 
     it('should keep a user as a participant when selling only some votes', async () => {
-      const amountToBuy = ethers.parseEther('0.02');
+      const amountToBuy = DEFAULT.buyAmount * 20n;
 
       // Buy votes
       await userA.buyVotes({ buyAmount: amountToBuy });

@@ -1,8 +1,10 @@
-import { loadFixture, time } from '@nomicfoundation/hardhat-toolbox/network-helpers';
+import { loadFixture, time } from '@nomicfoundation/hardhat-toolbox/network-helpers.js';
 import { expect } from 'chai';
-import { ethers } from 'hardhat';
-import { common } from './utils/common';
-import { smartContractNames } from './utils/mock.names';
+import hre from 'hardhat';
+import { common } from './utils/common.js';
+import { smartContractNames } from './utils/mock.names.js';
+
+const { ethers } = hre;
 
 describe('EthosAttestation', () => {
   // eslint-disable-next-line @typescript-eslint/explicit-function-return-type
@@ -1659,9 +1661,11 @@ describe('EthosAttestation', () => {
         ACCOUNT_NAME_BEN,
       );
 
-      let expectedHash = ethers.solidityPackedKeccak256(
-        ['string', 'string'],
-        [SERVICE_X, ACCOUNT_NAME_BEN],
+      let expectedHash = ethers.keccak256(
+        ethers.AbiCoder.defaultAbiCoder().encode(
+          ['string', 'string'],
+          [SERVICE_X, ACCOUNT_NAME_BEN],
+        ),
       );
 
       expect(attestationHash).equal(expectedHash, 'Wrong attestationHash for 0');
@@ -1672,9 +1676,11 @@ describe('EthosAttestation', () => {
         ACCOUNT_NAME_IVAN,
       );
 
-      expectedHash = ethers.solidityPackedKeccak256(
-        ['string', 'string'],
-        [SERVICE_FB, ACCOUNT_NAME_IVAN],
+      expectedHash = ethers.keccak256(
+        ethers.AbiCoder.defaultAbiCoder().encode(
+          ['string', 'string'],
+          [SERVICE_FB, ACCOUNT_NAME_IVAN],
+        ),
       );
 
       expect(attestationHash).equal(expectedHash, 'Wrong attestationHash for 1');
@@ -1691,9 +1697,11 @@ describe('EthosAttestation', () => {
         ACCOUNT_NAME_BEN,
       );
 
-      expectedHash = ethers.solidityPackedKeccak256(
-        ['string', 'string'],
-        [ACCOUNT_NAME_BEN, SERVICE_X],
+      expectedHash = ethers.keccak256(
+        ethers.AbiCoder.defaultAbiCoder().encode(
+          ['string', 'string'],
+          [ACCOUNT_NAME_BEN, SERVICE_X],
+        ),
       );
 
       expect(attestationHash).not.equal(expectedHash, 'Wrong attestationHash for 4');

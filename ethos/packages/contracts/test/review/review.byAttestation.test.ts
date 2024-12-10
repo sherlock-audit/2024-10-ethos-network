@@ -1,16 +1,24 @@
-import { type HardhatEthersSigner } from '@nomicfoundation/hardhat-ethers/signers';
-import { loadFixture } from '@nomicfoundation/hardhat-toolbox/network-helpers';
+import { type HardhatEthersSigner } from '@nomicfoundation/hardhat-ethers/signers.js';
+import { loadFixture } from '@nomicfoundation/hardhat-toolbox/network-helpers.js';
 import { expect } from 'chai';
-import { ethers } from 'hardhat';
+import hre from 'hardhat';
 import { zeroAddress } from 'viem';
-import { type EthosAttestation, type EthosProfile, type EthosReview } from '../../typechain-types';
-import { common } from '../utils/common';
-import { DEFAULT } from '../utils/defaults';
-import { createDeployer, type EthosDeployer } from '../utils/deployEthos';
-import { type EthosUser } from '../utils/ethosUser';
+import {
+  type EthosAttestation,
+  type EthosProfile,
+  type EthosReview,
+} from '../../typechain-types/index.js';
+
+import { common } from '../utils/common.js';
+import { DEFAULT } from '../utils/defaults.js';
+import { createDeployer, type EthosDeployer } from '../utils/deployEthos.js';
+import { type EthosUser } from '../utils/ethosUser.js';
+
+const { ethers } = hre;
 
 describe('EthosReview by Attestation', () => {
   let deployer: EthosDeployer;
+  let userA: EthosUser;
   let userB: EthosUser;
   let ethosProfile: EthosProfile;
   let ethosAttestation: EthosAttestation;
@@ -41,6 +49,7 @@ describe('EthosReview by Attestation', () => {
   beforeEach(async () => {
     deployer = await loadFixture(createDeployer);
 
+    userA = await deployer.createUser();
     userB = await deployer.createUser();
     EXPECTED_SIGNER = deployer.EXPECTED_SIGNER;
 
@@ -80,7 +89,7 @@ describe('EthosReview by Attestation', () => {
 
     const aHash = await ethosAttestation.getServiceAndAccountHash(SERVICE_X, ACCOUNT_NAME_BEN);
     const id = await ethosProfile.profileIdByAttestation(aHash);
-    expect(id).to.be.equal(3);
+    expect(id).to.be.equal(4);
   });
 
   it('should emit ReviewCreated event with correct params, if _subject == address(0)', async () => {
@@ -113,7 +122,7 @@ describe('EthosReview by Attestation', () => {
         ),
     )
       .to.emit(ethosReview, 'ReviewCreated')
-      .withArgs(Score.Positive, userBAddr, aHash, ethers.ZeroAddress, 0, 3);
+      .withArgs(Score.Positive, userBAddr, aHash, ethers.ZeroAddress, 0, 4);
   });
 
   it('should emit ReviewCreated event with correct params, if review is not for attestation', async () => {
@@ -146,7 +155,7 @@ describe('EthosReview by Attestation', () => {
         ),
     )
       .to.emit(ethosReview, 'ReviewCreated')
-      .withArgs(Score.Positive, userBAddr, zeroHash, signerAddr, 0, 3);
+      .withArgs(Score.Positive, userBAddr, zeroHash, signerAddr, 0, 4);
   });
 
   it('should revert when trying to leave a self-review by alternate attestation', async () => {
@@ -174,5 +183,43 @@ describe('EthosReview by Attestation', () => {
     await expect(userB.review({ attestationDetails }))
       .to.be.revertedWithCustomError(ethosReview, 'SelfReview')
       .withArgs(zeroAddress);
+  });
+
+  it('should track review IDs in mappings for attestation reviews', async () => {
+    const attestationDetails = {
+      account: ACCOUNT_NAME_BEN,
+      service: SERVICE_X,
+    } satisfies AttestationDetails;
+
+    // Create two reviews from different users
+    await userA.review({ attestationDetails });
+    await userB.review({ attestationDetails });
+    // Create a review for a different attestation
+    await userB.review({
+      attestationDetails: { account: DEFAULT.ACCOUNT_NAME_NASA, service: DEFAULT.SERVICE_FB },
+    });
+
+    const attestationHash = await ethosAttestation.getServiceAndAccountHash(
+      SERVICE_X,
+      ACCOUNT_NAME_BEN,
+    );
+    const alternateHash = await ethosAttestation.getServiceAndAccountHash(
+      DEFAULT.SERVICE_FB,
+      DEFAULT.ACCOUNT_NAME_NASA,
+    );
+
+    // Check author mappings
+    const userAReviewId = await ethosReview.reviewIdsByAuthorAddress(userA.signer.address, 0n);
+    expect(userAReviewId).to.equal(0);
+    const userBReviewId = await ethosReview.reviewIdsByAuthorAddress(userB.signer.address, 0n);
+    expect(userBReviewId).to.equal(1);
+
+    // Check attestation hash mapping
+    expect(await ethosReview.reviewIdsByAttestationHash(attestationHash, 0n)).to.equal(0n);
+    expect(await ethosReview.reviewIdsByAttestationHash(attestationHash, 1n)).to.equal(1n);
+    expect(await ethosReview.reviewIdsByAttestationHash(alternateHash, 0n)).to.equal(2n);
+
+    // Verify subject address mapping is empty
+    await expect(ethosReview.reviewIdsBySubjectAddress(ethers.ZeroAddress, 0n)).to.be.reverted;
   });
 });

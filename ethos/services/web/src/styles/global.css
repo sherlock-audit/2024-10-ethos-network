@@ -1,0 +1,132 @@
+:root {
+  --full-height: 100vh;
+}
+
+@supports (height: 100dvh) {
+  :root {
+    --full-height: 100dvh;
+  }
+}
+
+html {
+  height: 100%;
+}
+
+body {
+  height: 100%;
+  margin: 0;
+  font-feature-settings: 'calt' 0;
+  padding-left: env(safe-area-inset-left);
+  padding-right: env(safe-area-inset-right);
+}
+
+h1,
+h2,
+h3,
+h4,
+h5,
+h6 {
+  margin-block-start: 0;
+  margin-block-end: 0;
+  margin-inline-start: 0;
+  margin-inline-end: 0;
+  font-family: var(--font-queens), sans-serif !important;
+  font-weight: 400;
+}
+
+.ant-avatar {
+  border: none !important;
+}
+
+p,
+span,
+div {
+  font-feature-settings: 'calt' 0;
+}
+
+.ant-input-data-count,
+.ant-input-show-count-suffix {
+  font-size: 10px;
+  position: absolute;
+  bottom: 0;
+  right: 0;
+}
+
+.ant-menu-horizontal>.ant-menu-item-selected::after {
+  display: none;
+}
+
+#rk_chain_modal_title,
+[data-rk][aria-labelledby="rk_connect_title"],
+[data-rk][aria-labelledby="rk_connect_title"] * {
+  font-family: var(--font-inter), sans-serif !important;
+  font-weight: 400;
+}
+
+#rk_connect_title,
+#rk_chain_modal_title {
+  font-weight: 600 !important;
+}
+
+
+.ant-statistic-content-prefix {
+  display: flex;
+  align-items: center;
+}
+
+.profile-popover .ant-popover-inner-content>div {
+  background-color: var(--ant-color-bg-elevated);
+}
+
+.intercom-lightweight-app, .tsqd-open-btn-container,
+.intercom-lightweight-app-launcher {
+  z-index: 88 !important;
+}
+
+/*
+  TODO GDT
+  override .ant-notification icon colors
+  @ant-design/icons does not currently respect layers
+  https://github.com/ant-design/ant-design-icons/issues/644
+*/
+.ant-notification .ant-notification-notice-wrapper .ant-notification-notice-icon-success.anticon, .ant-alert.ant-alert-success .ant-alert-icon {
+  color: var(--ant-color-success);
+}
+
+.ant-notification .ant-notification-notice-wrapper .ant-notification-notice-icon-info.anticon, .ant-alert.ant-alert-info .ant-alert-icon {
+  color: var(--ant-color-info);
+}
+
+.ant-notification .ant-notification-notice-wrapper .ant-notification-notice-icon-warning.anticon, .ant-alert.ant-alert-warning .ant-alert-icon {
+  color: var(--ant-color-warning);
+}
+
+.ant-notification .ant-notification-notice-wrapper .ant-notification-notice-icon-error.anticon, .ant-alert.ant-alert-error .ant-alert-icon {
+  color: var(--ant-color-error);
+}
+
+.ant-alert .ant-alert-close-icon .anticon-close {
+    color: var(--ant-color-text);
+}
+
+*, *:before, *:after {
+  box-sizing: border-box;
+}
+
+@media (pointer: coarse) {
+  input,
+  textarea,
+  .ant-input {
+    font-size: 16px !important;
+  }
+
+  .queens-input {
+    font-size: 22px !important;
+  }
+}
+
+@media (max-width: 767px) {
+    .intercom-lightweight-app-launcher{
+        display: none;
+    }
+}

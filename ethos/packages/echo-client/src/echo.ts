@@ -1,5 +1,5 @@
 /* eslint-disable @typescript-eslint/explicit-function-return-type */
-import { type ActivityType, type EthosUserTarget, isUserKeyValid, toUserKey } from '@ethos/domain';
+import { type ActivityType, type EthosUserTarget, isTargetValid, toUserKey } from '@ethos/domain';
 import { isValidAddress } from '@ethos/helpers';
 import { type Address } from 'viem';
 // eslint-disable-next-line no-restricted-imports
@@ -21,7 +21,6 @@ import {
   type EthPriceResponse,
   type ExtendedAttestationQueryRequest,
   type ExtendedAttestationQueryResponse,
-  type FeedResponse,
   type InvitationQueryRequest,
   type InvitationQueryResponse,
   type MostCredibleVouchersRequest,
@@ -33,8 +32,6 @@ import {
   type PendingInvitationsResponse,
   type ProfileQueryRequest,
   type ProfileQueryResponse,
-  type RecentActivitiesRequest,
-  type RecentActivitiesResponse,
   type RecentInteractionsRequest,
   type RecentInteractionsResponse,
   type RecentProfileQueryRequest,
@@ -89,8 +86,36 @@ import {
   type MarketSearchRequest,
   type EventsProcessRequest,
   type EventsProcessResponse,
-} from '../../../services/echo/src/types/api.types';
-import { getApi, NetError } from './utils/request-utils';
+  type ContributionStatsResponse,
+  type ContributionStatsRequest,
+  type ContributionActionResponse,
+  type ContributionByProfileResponse,
+  type ContributionByProfileRequest,
+  type ContributionActionRequest,
+  type ContributionDailyRequest,
+  type ContributionDailyResponse,
+  type UpdateUserFCMTokenResponse,
+  type UpdateUserFCMTokenRequest,
+  type CredibilityLeaderboardQueryResponse,
+  type XPLeaderboardQueryResponse,
+  type SignatureRegisterAddressRequest,
+  type SignatureRegisterAddressResponse,
+  type UnifiedActivityRequest,
+  type UnifiedActivityResponse,
+  type MarketTransactionHistoryRequest,
+  type PrivyLoginResponse,
+  type XpHistoryRequest,
+  type XpHistoryResponse,
+  type MarketTransactionHistoryByAddressResponse,
+  type MarketTransactionHistoryByAddressRequest,
+  type MarketHoldingsByAddressResponse,
+  type MarketHoldingsTotalByAddressResponse,
+  type MarketHoldingsByAddressRequest,
+  type MarketVolumeTradedByAddressResponse,
+  type MarketBulkInfoRequest,
+  type MarketBulkInfoResponse,
+} from '../../../services/echo/src/types/api.types.js';
+import { getApi, NetError } from './utils/request-utils.js';
 
 type EchoClientConfig = {
   baseUrl: string;
@@ -146,16 +171,6 @@ async function request<T extends ResponseSuccess<unknown>>(
   return response.data;
 }
 
-async function getFeed(params: { limit: number; offset: number }) {
-  const url = new URL('/api/v1/feed', echoClientConfig?.baseUrl);
-  url.searchParams.set('limit', params.limit.toString());
-  url.searchParams.set('offset', params.offset.toString());
-
-  return await request<FeedResponse>(url.toString(), {
-    method: 'GET',
-  });
-}
-
 async function getActivities(params: ActivitiesRequest) {
   return await request<ActivitiesResponse>('/api/v1/activities', {
     method: 'POST',
@@ -163,8 +178,8 @@ async function getActivities(params: ActivitiesRequest) {
   });
 }
 
-async function getRecentActivities(params: RecentActivitiesRequest) {
-  return await request<RecentActivitiesResponse>(`/api/v1/activities/recent`, {
+async function getUnifiedActivities(params: UnifiedActivityRequest) {
+  return await request<UnifiedActivityResponse>('/api/v1/activities/unified', {
     method: 'POST',
     body: JSON.stringify(params),
   });
@@ -173,7 +188,7 @@ async function getRecentActivities(params: RecentActivitiesRequest) {
 async function getActivityActor(target: EthosUserTarget) {
   const userkey = toUserKey(target);
 
-  if (!isUserKeyValid(target)) {
+  if (!isTargetValid(target)) {
     return null;
   }
 
@@ -284,6 +299,22 @@ async function getRecentProfiles(params: RecentProfileQueryRequest) {
   });
 }
 
+async function getCredibilityLeaderboard(params?: { order?: 'asc' | 'desc' }) {
+  const searchParams = new URLSearchParams();
+
+  if (params?.order) {
+    searchParams.set('order', params.order);
+  }
+  const queryString = searchParams.toString();
+  const url = `/api/v1/profiles/credibility-leaderboard${queryString ? `?${queryString}` : ''}`;
+
+  return await request<CredibilityLeaderboardQueryResponse>(url);
+}
+
+async function getXpLeaderboard() {
+  return await request<XPLeaderboardQueryResponse>('/api/v1/profiles/xp-leaderboard');
+}
+
 async function getSignatureForCreateAttestation(params: SignatureForCreateAttestationRequest) {
   return await request<SignatureForCreateAttestationResponse>(
     '/api/signatures/create-attestation',
@@ -292,6 +323,13 @@ async function getSignatureForCreateAttestation(params: SignatureForCreateAttest
       body: JSON.stringify(params),
     },
   );
+}
+
+async function getSignatureForRegisterAddress(params: SignatureRegisterAddressRequest) {
+  return await request<SignatureRegisterAddressResponse>('/api/signatures/register-address', {
+    method: 'POST',
+    body: JSON.stringify(params),
+  });
 }
 
 async function getTwitterUser(params: TwitterUserRequest) {
@@ -312,7 +350,7 @@ async function searchTwitterUser({ search, limit = 10 }: TwitterUserSearchReques
   const searchParams = new URLSearchParams({ search, limit: String(limit) });
 
   return await request<TwitterUserSearchResponse>(
-    `/api/twitter/users/search/?${searchParams.toString()}`,
+    `/api/twitter/users/search?${searchParams.toString()}`,
   );
 }
 
@@ -431,48 +469,53 @@ async function getPendingInvitations(params: PendingInvitationsRequest) {
 async function getScore(target: EthosUserTarget) {
   const targetKey = toUserKey(target);
 
-  if (!isUserKeyValid(target)) {
+  if (!isTargetValid(target)) {
     return null;
   }
 
   return await request<ScoreResponse>(`/api/v1/score/${targetKey}`).then((res) => res.score);
 }
 
-async function getScoreHistory(target: EthosUserTarget, days: number = 30) {
+async function getScoreHistory(
+  target: EthosUserTarget,
+  days: number = 30,
+  extended: boolean = false,
+  pagination?: { limit?: number; offset?: number },
+) {
   const targetKey = toUserKey(target);
 
-  if (!isUserKeyValid(target)) {
-    return null;
-  }
+  if (!isTargetValid(target)) return null;
+
+  const searchParams = new URLSearchParams({ duration: `${days}d` });
+
+  if (extended) searchParams.set('expanded', 'true');
+
+  if (pagination?.limit) searchParams.set('limit', String(pagination.limit));
+
+  if (pagination?.offset) searchParams.set('offset', String(pagination.offset));
 
   return await request<ScoreHistoryResponse>(
-    `/api/v1/score/${targetKey}/history?duration=${days}d`,
+    `/api/v1/score/${targetKey}/history?${searchParams.toString()}`,
   );
 }
 
 async function getScoreElements(target: EthosUserTarget): Promise<ScoreResponse['data'] | null> {
   const targetKey = toUserKey(target);
 
-  if (!isUserKeyValid(target)) {
+  if (!isTargetValid(target)) {
     return null;
   }
 
   return await request<ScoreResponse>(`/api/v1/score/${targetKey}`);
 }
 
-async function getScoreSimulation(
-  subject: EthosUserTarget,
+async function simulateScore(
   params: ScoreSimulationRequest,
 ): Promise<ScoreSimulationResponse['data']> {
-  const subjectKey = toUserKey(subject);
-
-  const formattedParams = Object.fromEntries(
-    Object.entries(params).map(([key, value]) => [key, String(value)]),
-  );
-
-  return await request<ScoreSimulationResponse>(
-    `/api/v1/score/simulate/${subjectKey}?${new URLSearchParams(formattedParams).toString()}`,
-  );
+  return await request<ScoreSimulationResponse>(`/api/v1/score/simulate`, {
+    method: 'POST',
+    body: JSON.stringify(params),
+  });
 }
 
 async function getHighestScoringActors(limit: number = 5) {
@@ -507,6 +550,15 @@ async function getMarketInfo(profileId: number): Promise<MarketInfoResponse['dat
   }
 }
 
+async function getMarketsByIds(
+  params: MarketBulkInfoRequest,
+): Promise<MarketBulkInfoResponse['data']> {
+  return await request<MarketBulkInfoResponse>('/api/v1/markets/bulk', {
+    method: 'POST',
+    body: JSON.stringify(params),
+  });
+}
+
 async function getMarketPriceHistory(
   profileId: number,
   window: MarketPriceHistoryRequest['window'],
@@ -516,12 +568,84 @@ async function getMarketPriceHistory(
   );
 }
 
-async function getMarketTransactionHistory(profileId: number) {
-  return await request<MarketTransactionHistoryResponse>(`/api/v1/markets/${profileId}/tx/history`);
+async function getMarketTransactionHistory({
+  profileId,
+  pagination,
+  voteTypeFilter,
+}: MarketTransactionHistoryRequest) {
+  const searchParams = new URLSearchParams();
+
+  if (profileId) {
+    searchParams.set('profileId', profileId.toString());
+  }
+
+  if (pagination?.limit) {
+    searchParams.set('limit', pagination.limit.toString());
+  }
+
+  if (pagination?.offset) {
+    searchParams.set('offset', pagination.offset.toString());
+  }
+
+  if (voteTypeFilter) {
+    searchParams.set('voteTypeFilter', voteTypeFilter);
+  }
+
+  return await request<MarketTransactionHistoryResponse>(
+    `/api/v1/markets/tx/history?${searchParams.toString()}`,
+  );
+}
+
+export async function getMarketTxHistoryByAddress(
+  params: MarketTransactionHistoryByAddressRequest,
+) {
+  const searchParams = new URLSearchParams();
+
+  if (params.pagination?.limit) {
+    searchParams.set('limit', params.pagination.limit.toString());
+  }
+
+  if (params.pagination?.offset) {
+    searchParams.set('offset', params.pagination.offset.toString());
+  }
+
+  if (params.voteTypeFilter) {
+    searchParams.set('voteTypeFilter', params.voteTypeFilter);
+  }
+
+  return await request<MarketTransactionHistoryByAddressResponse>(
+    `/api/v1/markets/activity/${params.address}?${searchParams.toString()}`,
+  );
 }
 
 async function getMarketHolders(profileId: number) {
   return await request<MarketHoldersResponse>(`/api/v1/markets/${profileId}/holders`);
+}
+
+async function getMarketHoldingsByAddress(params: MarketHoldingsByAddressRequest) {
+  const searchParams = new URLSearchParams();
+
+  if (params.pagination?.limit) {
+    searchParams.set('limit', params.pagination.limit.toString());
+  }
+
+  if (params.pagination?.offset) {
+    searchParams.set('offset', params.pagination.offset.toString());
+  }
+
+  return await request<MarketHoldingsByAddressResponse>(
+    `/api/v1/markets/holdings/${params.address}?${searchParams.toString()}`,
+  );
+}
+
+async function getMarketHoldingsTotalByAddress(address: Address) {
+  return await request<MarketHoldingsTotalByAddressResponse>(
+    `/api/v1/markets/holdings/${address}/total`,
+  );
+}
+
+async function getMarketVolumeTradedByAddress(address: string) {
+  return await request<MarketVolumeTradedByAddressResponse>(`/api/v1/markets/volume/${address}`);
 }
 
 async function searchMarkets(params: MarketSearchRequest) {
@@ -540,9 +664,74 @@ async function processEvents(params: EventsProcessRequest) {
   );
 }
 
+async function getContributionByProfile({ profileId, status }: ContributionByProfileRequest) {
+  const params = new URLSearchParams();
+  status.forEach((x) => {
+    params.append('status[]', x);
+  });
+
+  return await request<ContributionByProfileResponse>(
+    `/api/v1/contributions/${profileId}?${params.toString()}`,
+  );
+}
+
+async function recordContributionAction(params: ContributionActionRequest) {
+  await request<ContributionActionResponse>('/api/v1/contributions/action', {
+    method: 'POST',
+    body: JSON.stringify(params),
+  });
+}
+
+async function getContributionStatsByProfile({ profileId }: ContributionStatsRequest) {
+  return await request<ContributionStatsResponse>(`/api/v1/contributions/${profileId}/stats`);
+}
+
+async function contributionDaily(params: ContributionDailyRequest) {
+  return await request<ContributionDailyResponse>('/api/v1/contributions/daily', {
+    method: 'POST',
+    body: JSON.stringify(params),
+  });
+}
+
+async function updateUserFCMToken(params: UpdateUserFCMTokenRequest) {
+  return await request<UpdateUserFCMTokenResponse>(`/api/v1/notifications/user-fcm-token`, {
+    method: 'POST',
+    body: JSON.stringify(params),
+  });
+}
+
+async function createPrivyLogin(privyToken: string, privyIdToken: string) {
+  await request<PrivyLoginResponse>('/api/v1/privy-logins', {
+    method: 'POST',
+    headers: {
+      Authorization: `Bearer ${privyToken}`,
+      'X-Privy-Id-Token': privyIdToken,
+    },
+  });
+}
+
+async function getXpHistory({
+  userkey,
+  pagination,
+}: XpHistoryRequest): Promise<XpHistoryResponse['data']> {
+  const searchParams = new URLSearchParams();
+
+  if (typeof pagination?.limit === 'number') {
+    searchParams.append('limit', String(pagination.limit));
+  }
+
+  if (typeof pagination?.offset === 'number') {
+    searchParams.append('offset', String(pagination.offset));
+  }
+
+  return await request<XpHistoryResponse>(
+    `/api/v1/xp/${userkey}/history?${searchParams.toString()}`,
+  );
+}
+
 export const echoClient = {
   activities: {
-    recent: getRecentActivities,
+    unified: getUnifiedActivities,
     get: getActivityInfo,
     bulk: getActivities,
     actor: getActivityActor,
@@ -564,9 +753,6 @@ export const echoClient = {
   contracts: {
     getAddresses: getContractAddresses,
   },
-  feed: {
-    get: getFeed,
-  },
   exchangeRates: {
     getEthPriceInUSD,
   },
@@ -577,9 +763,15 @@ export const echoClient = {
   profiles: {
     query: getProfile,
     recent: getRecentProfiles,
+    credibilityLeaderboard: getCredibilityLeaderboard,
+    xpLeaderboard: getXpLeaderboard,
+  },
+  xp: {
+    history: getXpHistory,
   },
   signatures: {
     createAttestation: getSignatureForCreateAttestation,
+    registerAddress: getSignatureForRegisterAddress,
   },
   twitter: {
     user: {
@@ -601,7 +793,7 @@ export const echoClient = {
     history: getScoreHistory,
     highestScoringActors: getHighestScoringActors,
     elements: getScoreElements,
-    simulate: getScoreSimulation,
+    simulate: simulateScore,
   },
   search: {
     query: querySearch,
@@ -625,14 +817,31 @@ export const echoClient = {
   markets: {
     search: searchMarkets,
     info: getMarketInfo,
+    infoByIds: getMarketsByIds,
     priceHistory: getMarketPriceHistory,
     transactionHistory: getMarketTransactionHistory,
+    txHistoryByAddress: getMarketTxHistoryByAddress,
+    holdingsByAddress: getMarketHoldingsByAddress,
+    holdingsTotalByAddress: getMarketHoldingsTotalByAddress,
     holders: getMarketHolders,
+    volumeByAddress: getMarketVolumeTradedByAddress,
   },
   fees: {
     info: getFeesInfo,
   },
   events: {
     process: processEvents,
+  },
+  contribution: {
+    getByProfile: getContributionByProfile,
+    recordAction: recordContributionAction,
+    statsByProfile: getContributionStatsByProfile,
+    daily: contributionDaily,
+  },
+  fcm: {
+    updateUserToken: updateUserFCMToken,
+  },
+  privyLogins: {
+    create: createPrivyLogin,
   },
 };

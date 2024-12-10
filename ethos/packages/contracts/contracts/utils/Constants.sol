@@ -9,7 +9,3 @@ string constant ETHOS_PROFILE = "ETHOS_PROFILE";
 string constant ETHOS_REVIEW = "ETHOS_REVIEW";
 string constant ETHOS_VOTE = "ETHOS_VOTE";
 string constant ETHOS_VOUCH = "ETHOS_VOUCH";
-string constant ETHOS_SLASH_PENALTY = "ETHOS_SLASH_PENALTY";
-string constant ETHOS_VAULT_MANAGER = "ETHOS_VAULT_MANAGER";
-string constant ETHOS_VAULT_FACTORY = "ETHOS_VAULT_FACTORY";
-string constant ETHOS_ESCROW = "ETHOS_ESCROW";

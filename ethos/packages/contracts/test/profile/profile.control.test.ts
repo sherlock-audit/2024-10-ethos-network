@@ -1,9 +1,12 @@
-import { loadFixture } from '@nomicfoundation/hardhat-toolbox/network-helpers';
+import { loadFixture } from '@nomicfoundation/hardhat-toolbox/network-helpers.js';
 import { expect } from 'chai';
-import { network, ethers } from 'hardhat';
+import hre from 'hardhat';
 import { zeroAddress } from 'viem';
-import { type EthosProfile } from '../../typechain-types';
-import { createDeployer, type EthosDeployer } from '../utils/deployEthos';
+import { type EthosProfile } from '../../typechain-types/index.js';
+import { DEFAULT } from '../utils/defaults.js';
+import { createDeployer, type EthosDeployer } from '../utils/deployEthos.js';
+
+const { ethers, network } = hre;
 
 describe('Controlling Ethos Profile Contract', () => {
   let deployer: EthosDeployer;
@@ -18,20 +21,23 @@ describe('Controlling Ethos Profile Contract', () => {
     ethosProfile = deployer.ethosProfile.contract;
   });
 
-  // eslint-disable-next-line jest/no-disabled-tests
-  it.skip('should not increment profile count when paused', async () => {
-    await ethosProfile.connect(deployer.OWNER).pause();
+  it('should not increment profile count when paused', async () => {
+    await deployer.interactionControl.contract
+      .connect(deployer.OWNER)
+      .pauseContract('ETHOS_PROFILE');
+
     await expect(
-      ethosProfile.incrementProfileCount(true, zeroAddress, ''),
-    ).to.be.revertedWithCustomError(ethosProfile, 'Paused');
+      ethosProfile.incrementProfileCount(true, zeroAddress, DEFAULT.EMPTY_BYTES),
+    ).to.be.revertedWithCustomError(ethosProfile, 'EnforcedPause');
   });
 
-  // eslint-disable-next-line jest/no-disabled-tests
-  it.skip('should not bulk invite when paused', async () => {
-    await ethosProfile.connect(deployer.OWNER).pause();
+  it('should not bulk invite when paused', async () => {
+    await deployer.interactionControl.contract
+      .connect(deployer.OWNER)
+      .pauseContract('ETHOS_PROFILE');
     await expect(
       ethosProfile.connect(deployer.OWNER).bulkInviteAddresses([zeroAddress]),
-    ).to.be.revertedWithCustomError(ethosProfile, 'Paused');
+    ).to.be.revertedWithCustomError(ethosProfile, 'EnforcedPause');
   });
 
   it('should increment profile for attestation', async () => {

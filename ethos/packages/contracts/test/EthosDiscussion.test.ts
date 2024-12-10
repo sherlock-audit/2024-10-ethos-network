@@ -1,9 +1,11 @@
-import { type HardhatEthersSigner } from '@nomicfoundation/hardhat-ethers/signers';
-import { loadFixture, time } from '@nomicfoundation/hardhat-toolbox/network-helpers';
+import { type HardhatEthersSigner } from '@nomicfoundation/hardhat-ethers/signers.js';
+import { loadFixture, time } from '@nomicfoundation/hardhat-toolbox/network-helpers.js';
 import { expect } from 'chai';
-import { ethers } from 'hardhat';
-import { type EthosReview } from '../typechain-types';
-import { smartContractNames } from './utils/mock.names';
+import hre from 'hardhat';
+import { type EthosReview } from '../typechain-types/index.js';
+import { smartContractNames } from './utils/mock.names.js';
+
+const { ethers } = hre;
 
 describe('EthosDiscussion', () => {
   const defaultComment = 'default comment';

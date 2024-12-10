@@ -7,7 +7,7 @@ import { IEthosAttestation } from "./interfaces/IEthosAttestation.sol";
 import { ITargetStatus } from "./interfaces/ITargetStatus.sol";
 import { IEthosProfile } from "./interfaces/IEthosProfile.sol";
 import { ETHOS_ATTESTATION, ETHOS_PROFILE } from "./utils/Constants.sol";
-import { WrongPaymentToken, WrongPaymentAmount, ReviewNotFound, ReviewIsArchived, UnauthorizedArchiving, ReviewNotArchived, InvalidReviewDetails, SelfReview, UnauthorizedEdit } from "./errors/ReviewErrors.sol";
+import { WrongPaymentToken, WrongPaymentAmount, ReviewNotFound, ReviewIsArchived, ReviewNotArchived, InvalidReviewDetails, SelfReview, UnauthorizedEdit } from "./errors/ReviewErrors.sol";
 import { AttestationDetails } from "./utils/Structs.sol";
 import { AccessControl } from "./utils/AccessControl.sol";
 import { Common } from "./utils/Common.sol";
@@ -27,6 +27,16 @@ import { Common } from "./utils/Common.sol";
  * - This differentiates reviews from discussions, as it acts as a form of Sybil protection while also elevating their significance compared to other activity items.
  */
 contract EthosReview is AccessControl, Common, ITargetStatus, UUPSUpgradeable {
+  /**
+   * @dev Constructor that disables initializers when the implementation contract is deployed.
+   * This prevents the implementation contract from being initialized, which is important for
+   * security since the implementation contract should never be used directly, only through
+   * delegatecall from the proxy.
+   */
+  constructor() {
+    _disableInitializers();
+  }
+
   enum Score {
     Negative,
     Neutral,
@@ -58,7 +68,6 @@ contract EthosReview is AccessControl, Common, ITargetStatus, UUPSUpgradeable {
     address author;
     address subject;
     uint256 reviewId;
-    uint256 authorProfileId;
     uint256 createdAt;
     string comment;
     string metadata;
@@ -82,15 +91,22 @@ contract EthosReview is AccessControl, Common, ITargetStatus, UUPSUpgradeable {
   mapping(address => PaymentToken) public reviewPrice;
   // Mapping from review ID to the Review struct
   mapping(uint256 => Review) public reviews;
-  // Mapping from author's profile ID to an array of review IDs authored by that profile
-  mapping(uint256 => uint256[]) public reviewIdsByAuthorProfileId;
-  // Mapping from subject's profile ID to an array of review IDs related to that profile
-  mapping(uint256 => uint256[]) public reviewIdsBySubjectProfileId;
+  // Mapping from author address to review IDs
+  mapping(address => uint256[]) public reviewIdsByAuthorAddress;
+  // Mapping from subject address to review IDs (when review is for an address)
+  mapping(address => uint256[]) public reviewIdsBySubjectAddress;
+  // Mapping from attestation hash to review IDs (when review is for an attestation)
+  mapping(bytes32 => uint256[]) public reviewIdsByAttestationHash;
+
+  // Add storage gap as the last storage variable
+  // This allows us to add new storage variables in future upgrades
+  // by reducing the size of this gap
+  uint256[50] private __gap;
 
   event ReviewCreated(
     Score score,
     address indexed author,
-    bytes32 attestationHash,
+    bytes32 indexed attestationHash,
     address indexed subject,
     uint256 reviewId,
     uint256 profileId
@@ -179,8 +195,8 @@ contract EthosReview is AccessControl, Common, ITargetStatus, UUPSUpgradeable {
     AttestationDetails calldata attestationDetails
   ) external payable whenNotPaused {
     _validateReviewDetails(subject, attestationDetails);
-
     IEthosProfile ethosProfile = _getEthosProfile();
+    ethosProfile.verifiedProfileIdForAddress(msg.sender);
     bytes32 attestationHash;
     uint256 mockId;
     if (subject != address(0)) {
@@ -196,15 +212,11 @@ contract EthosReview is AccessControl, Common, ITargetStatus, UUPSUpgradeable {
       mockId = _addReview(mockId, subject, true, attestationHash, ethosProfile);
     }
 
-    uint256 authorProfileId = ethosProfile.verifiedProfileIdForAddress(msg.sender);
-    reviewIdsByAuthorProfileId[authorProfileId].push(reviewCount);
-
     _handlePayment(paymentToken);
 
     reviews[reviewCount] = Review({
       archived: false,
       score: score,
-      authorProfileId: authorProfileId,
       author: msg.sender,
       subject: subject,
       reviewId: reviewCount,
@@ -214,6 +226,15 @@ contract EthosReview is AccessControl, Common, ITargetStatus, UUPSUpgradeable {
       metadata: metadata,
       attestationDetails: attestationDetails
     });
+
+    // store reference to review in convenience lookup mappings
+    reviewIdsByAuthorAddress[msg.sender].push(reviewCount);
+    if (subject != address(0)) {
+      reviewIdsBySubjectAddress[subject].push(reviewCount);
+    } else {
+      reviewIdsByAttestationHash[attestationHash].push(reviewCount);
+    }
+
     emit ReviewCreated(score, msg.sender, attestationHash, subject, reviewCount, mockId);
     reviewCount++;
   }
@@ -244,8 +265,6 @@ contract EthosReview is AccessControl, Common, ITargetStatus, UUPSUpgradeable {
     } else {
       subjectProfileId = mockId;
     }
-
-    reviewIdsBySubjectProfileId[subjectProfileId].push(reviewCount);
   }
 
   /**
@@ -264,15 +283,10 @@ contract EthosReview is AccessControl, Common, ITargetStatus, UUPSUpgradeable {
     string calldata metadata
   ) external whenNotPaused {
     Review storage review = reviews[reviewId];
-    uint256 authorProfileId = _getEthosProfile().verifiedProfileIdForAddress(msg.sender);
-
-    if (review.authorProfileId != authorProfileId) {
-      revert UnauthorizedEdit(reviewId);
-    }
-
     if (review.archived) {
       revert ReviewIsArchived(reviewId);
     }
+    _onlyReviewAuthor(reviewId);
 
     review.comment = comment;
     review.metadata = metadata;
@@ -286,23 +300,17 @@ contract EthosReview is AccessControl, Common, ITargetStatus, UUPSUpgradeable {
    */
   function archiveReview(uint256 reviewId) external whenNotPaused {
     (bool exists, ) = targetExistsAndAllowedForId(reviewId);
-
     if (!exists) {
       revert ReviewNotFound(reviewId);
     }
 
     Review storage review = reviews[reviewId];
-
     if (review.archived) {
       revert ReviewIsArchived(reviewId);
     }
-
-    if (review.author != msg.sender) {
-      revert UnauthorizedArchiving(reviewId);
-    }
+    _onlyReviewAuthor(reviewId);
 
     review.archived = true;
-
     emit ReviewArchived(reviewId, msg.sender, review.subject);
   }
 
@@ -311,120 +319,18 @@ contract EthosReview is AccessControl, Common, ITargetStatus, UUPSUpgradeable {
    * @param reviewId Review id.
    */
   function restoreReview(uint256 reviewId) external whenNotPaused {
-    _getEthosProfile().verifiedProfileIdForAddress(msg.sender);
     Review storage review = reviews[reviewId];
-
     if (review.author == address(0)) {
       revert ReviewNotFound(reviewId);
-    }
-
-    if (review.author != msg.sender) {
-      revert UnauthorizedArchiving(reviewId);
     }
 
     if (!review.archived) {
       revert ReviewNotArchived(reviewId);
     }
+    _onlyReviewAuthor(reviewId);
 
     review.archived = false;
-
     emit ReviewRestored(reviewId, msg.sender, review.subject);
-  }
-
-  /**
-   * @dev Returns reviews by author.
-   * @param authorProfileId Profile ID of the author.
-   * @param fromIdx Start index.
-   * @param maxLength Maximum number of reviews to return.
-   * @return result Array of Review structs.
-   */
-  function reviewsByAuthorInRange(
-    uint256 authorProfileId,
-    uint256 fromIdx,
-    uint256 maxLength
-  ) external view returns (Review[] memory result) {
-    uint256[] memory reviewIds = reviewIdsByAuthorProfileId[authorProfileId];
-    return _reviewsInRange(maxLength, fromIdx, reviewIds);
-  }
-
-  /**
-   * @dev Returns reviews by subject.
-   * @param subjectProfileId Profile ID of the subject.
-   * @param fromIdx Start index.
-   * @param maxLength Maximum number of reviews to return.
-   * @return result Array of Review structs.
-   */
-  function reviewsBySubjectInRange(
-    uint256 subjectProfileId,
-    uint256 fromIdx,
-    uint256 maxLength
-  ) external view returns (Review[] memory result) {
-    uint256[] memory reviewIds = reviewIdsBySubjectProfileId[subjectProfileId];
-    return _reviewsInRange(maxLength, fromIdx, reviewIds);
-  }
-
-  /**
-   * @dev Returns reviews by subject.
-   * @param attestationHash Attestation hash.
-   * @param fromIdx Start index.
-   * @param maxLength Maximum length of vouches to return.
-   * @return result Reviews array.
-   */
-  function reviewsByAttestationHashInRange(
-    bytes32 attestationHash,
-    uint256 fromIdx,
-    uint256 maxLength
-  ) external view returns (Review[] memory result) {
-    uint256 subjectProfileId = _getEthosProfile().profileIdByAttestation(attestationHash);
-    uint256[] memory reviewIds = reviewIdsBySubjectProfileId[subjectProfileId];
-    return _reviewsInRange(maxLength, fromIdx, reviewIds);
-  }
-
-  /**
-   * @dev Gets number of reviews
-   * @param reviewsBy Enum indicating whether to count reviews by author, subject, or attestation hash.
-   * @param profileId Profile ID to use when counting by author or subject.
-   * @param attestationHash Attestation hash to use when counting by subject attestation.
-   * @return reviewsNumber The number of reviews matching the specified criteria.
-   */
-  function numberOfReviewsBy(
-    ReviewsBy reviewsBy,
-    uint256 profileId,
-    bytes32 attestationHash
-  ) external view returns (uint256 reviewsNumber) {
-    if (reviewsBy == ReviewsBy.Author) {
-      reviewsNumber = reviewIdsByAuthorProfileId[profileId].length;
-    } else if (reviewsBy == ReviewsBy.Subject) {
-      reviewsNumber = reviewIdsBySubjectProfileId[profileId].length;
-    } else {
-      reviewsNumber = reviewIdsBySubjectProfileId[
-        _getEthosProfile().profileIdByAttestation(attestationHash)
-      ].length;
-    }
-  }
-
-  /**
-   * @dev Returns review IDs by subject address.
-   * @param subjectAddress Review subject's address.
-   * @return Array of review IDs.
-   */
-  function reviewIdsBySubjectAddress(
-    address subjectAddress
-  ) external view returns (uint256[] memory) {
-    uint256 profileId = _getEthosProfile().profileIdByAddress(subjectAddress);
-    return reviewIdsBySubjectProfileId[profileId];
-  }
-
-  /**
-   * @dev Returns review IDs by subject attestation hash.
-   * @param attestationHash Review subject's attestation hash.
-   * @return Array of review IDs.
-   */
-  function reviewIdsBySubjectAttestationHash(
-    bytes32 attestationHash
-  ) external view returns (uint256[] memory) {
-    uint256 profileId = _getEthosProfile().profileIdByAttestation(attestationHash);
-    return reviewIdsBySubjectProfileId[profileId];
   }
 
   /**
@@ -434,7 +340,11 @@ contract EthosReview is AccessControl, Common, ITargetStatus, UUPSUpgradeable {
    * @param paymentToken Payment token address.
    * @param price Review price.
    */
-  function setReviewPrice(bool allowed, address paymentToken, uint256 price) external onlyAdmin {
+  function setReviewPrice(
+    bool allowed,
+    address paymentToken,
+    uint256 price
+  ) external onlyAdmin whenNotPaused {
     if (allowed) {
       reviewPrice[paymentToken] = PaymentToken({ allowed: allowed, price: price });
     } else {
@@ -446,7 +356,7 @@ contract EthosReview is AccessControl, Common, ITargetStatus, UUPSUpgradeable {
    * @dev Withdraws funds.
    * @param paymentToken Payment token address.
    */
-  function withdrawFunds(address paymentToken) external onlyOwner {
+  function withdrawFunds(address paymentToken) external onlyOwner whenNotPaused {
     if (paymentToken == address(0)) {
       payable(msg.sender).transfer(address(this).balance);
     } else {
@@ -540,6 +450,16 @@ contract EthosReview is AccessControl, Common, ITargetStatus, UUPSUpgradeable {
       if (authorProfileId == subjectProfileId) {
         revert SelfReview(subject);
       }
+    }
+  }
+
+  function _onlyReviewAuthor(uint256 reviewId) private view {
+    uint256 senderProfileId = _getEthosProfile().verifiedProfileIdForAddress(msg.sender);
+    uint256 authorProfileId = _getEthosProfile().verifiedProfileIdForAddress(
+      reviews[reviewId].author
+    );
+    if (senderProfileId != authorProfileId) {
+      revert UnauthorizedEdit(reviewId);
     }
   }
 

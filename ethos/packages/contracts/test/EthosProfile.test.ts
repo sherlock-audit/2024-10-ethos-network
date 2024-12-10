@@ -1,11 +1,13 @@
-import { type HardhatEthersSigner } from '@nomicfoundation/hardhat-ethers/signers';
-import { loadFixture, time } from '@nomicfoundation/hardhat-toolbox/network-helpers';
+import { type HardhatEthersSigner } from '@nomicfoundation/hardhat-ethers/signers.js';
+import { loadFixture, time } from '@nomicfoundation/hardhat-toolbox/network-helpers.js';
 import { expect } from 'chai';
-import { ethers } from 'hardhat';
-import * as hre from 'hardhat';
-import { type EthosReview } from '../typechain-types';
-import { common } from './utils/common';
-import { smartContractNames } from './utils/mock.names';
+import hre from 'hardhat';
+
+import { type EthosReview } from '../typechain-types/index.js';
+import { common } from './utils/common.js';
+import { smartContractNames } from './utils/mock.names.js';
+
+const { ethers } = hre;
 
 describe('EthosProfile', () => {
   const Score = {
@@ -703,8 +705,8 @@ describe('EthosProfile', () => {
       await ethosProfile.connect(PROFILE_CREATOR_1).createProfile(1);
 
       await expect(ethosProfile.connect(PROFILE_CREATOR_1).inviteAddress(PROFILE_CREATOR_0.address))
-        .to.be.revertedWithCustomError(ethosProfile, 'ProfileExists')
-        .withArgs(3);
+        .to.be.revertedWithCustomError(ethosProfile, 'ProfileExistsForAddress')
+        .withArgs(PROFILE_CREATOR_0.address);
     });
   });
 
@@ -971,7 +973,7 @@ describe('EthosProfile', () => {
         ethosProfile
           .connect(PROFILE_CREATOR_0)
           .registerAddress(OTHER_0.address, profileId, rand, signature),
-      ).to.be.revertedWithCustomError(ethosProfile, 'ProfileNotFound');
+      ).to.be.revertedWithCustomError(ethosProfile, 'ProfileNotFoundForAddress');
     });
 
     it('should fail if Profile is archived', async () => {
@@ -1225,7 +1227,7 @@ describe('EthosProfile', () => {
       await interactionControl.connect(OWNER).pauseAll();
 
       await expect(
-        ethosProfile.connect(PROFILE_CREATOR_0).deleteAddressAtIndex(0),
+        ethosProfile.connect(PROFILE_CREATOR_0).deleteAddressAtIndex(0, false),
       ).to.be.revertedWithCustomError(ethosProfile, 'EnforcedPause');
     });
 
@@ -1234,7 +1236,7 @@ describe('EthosProfile', () => {
         await loadFixture(deployFixture);
 
       // nothing created yet
-      await expect(ethosProfile.connect(PROFILE_CREATOR_0).deleteAddressAtIndex(0))
+      await expect(ethosProfile.connect(PROFILE_CREATOR_0).deleteAddressAtIndex(0, false))
         .to.be.revertedWithCustomError(ethosProfile, 'ProfileNotFoundForAddress')
         .withArgs(PROFILE_CREATOR_0.address);
 
@@ -1242,7 +1244,7 @@ describe('EthosProfile', () => {
       await ethosProfile.connect(OWNER).inviteAddress(PROFILE_CREATOR_0.address);
       await ethosProfile.connect(PROFILE_CREATOR_0).createProfile(1);
 
-      await expect(ethosProfile.connect(PROFILE_CREATOR_1).deleteAddressAtIndex(0))
+      await expect(ethosProfile.connect(PROFILE_CREATOR_1).deleteAddressAtIndex(0, false))
         .to.be.revertedWithCustomError(ethosProfile, 'ProfileNotFoundForAddress')
         .withArgs(PROFILE_CREATOR_1.address);
     });
@@ -1254,7 +1256,7 @@ describe('EthosProfile', () => {
       await ethosProfile.connect(PROFILE_CREATOR_0).createProfile(1);
       await ethosProfile.connect(PROFILE_CREATOR_0).archiveProfile();
 
-      await expect(ethosProfile.connect(PROFILE_CREATOR_0).deleteAddressAtIndex(0))
+      await expect(ethosProfile.connect(PROFILE_CREATOR_0).deleteAddressAtIndex(0, false))
         .to.be.revertedWithCustomError(ethosProfile, 'ProfileAccess')
         .withArgs(2, 'Profile is archived');
     });
@@ -1279,7 +1281,7 @@ describe('EthosProfile', () => {
         .registerAddress(OTHER_0.address, profileId, rand, signature);
 
       await expect(
-        ethosProfile.connect(PROFILE_CREATOR_0).deleteAddressAtIndex(11),
+        ethosProfile.connect(PROFILE_CREATOR_0).deleteAddressAtIndex(11, false),
       ).to.be.revertedWithCustomError(ethosProfile, 'InvalidIndex');
     });
 
@@ -1303,12 +1305,12 @@ describe('EthosProfile', () => {
         .registerAddress(OTHER_0.address, profileId, rand, signature);
 
       // PROFILE_CREATOR_0
-      await expect(ethosProfile.connect(PROFILE_CREATOR_0).deleteAddressAtIndex(0))
+      await expect(ethosProfile.connect(PROFILE_CREATOR_0).deleteAddressAtIndex(0, false))
         .to.be.revertedWithCustomError(ethosProfile, 'AddressAuthorization')
         .withArgs(PROFILE_CREATOR_0.address, 'Address == msg.sender');
 
       // OTHER_0
-      await expect(ethosProfile.connect(OTHER_0).deleteAddressAtIndex(1))
+      await expect(ethosProfile.connect(OTHER_0).deleteAddressAtIndex(1, false))
         .to.be.revertedWithCustomError(ethosProfile, 'AddressAuthorization')
         .withArgs(OTHER_0.address, 'Address == msg.sender');
     });
@@ -1347,7 +1349,7 @@ describe('EthosProfile', () => {
       expect(addresses.length).to.be.equal(3, 'should be 3 addresses');
 
       // delete address at index 2
-      await ethosProfile.connect(PROFILE_CREATOR_0).deleteAddressAtIndex(2);
+      await ethosProfile.connect(PROFILE_CREATOR_0).deleteAddressAtIndex(2, false);
 
       addresses = await ethosProfile.addressesForProfile(2);
       expect(addresses.length).to.be.equal(2, 'should be 2 addresses');
@@ -1355,7 +1357,7 @@ describe('EthosProfile', () => {
       expect(addresses[1]).to.be.equal(OTHER_0.address, 'wrong address[1]');
 
       // delete address at index 1
-      await ethosProfile.connect(PROFILE_CREATOR_0).deleteAddressAtIndex(1);
+      await ethosProfile.connect(PROFILE_CREATOR_0).deleteAddressAtIndex(1, false);
 
       addresses = await ethosProfile.addressesForProfile(2);
       expect(addresses.length).to.be.equal(1, 'should be 1 address');
@@ -1381,7 +1383,7 @@ describe('EthosProfile', () => {
         .connect(PROFILE_CREATOR_0)
         .registerAddress(OTHER_0.address, profileId, rand, signature);
 
-      await expect(ethosProfile.connect(PROFILE_CREATOR_0).deleteAddressAtIndex(1))
+      await expect(ethosProfile.connect(PROFILE_CREATOR_0).deleteAddressAtIndex(1, false))
         .to.emit(ethosProfile, 'AddressClaim')
         .withArgs(2, OTHER_0.address, 0);
     });

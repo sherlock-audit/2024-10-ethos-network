@@ -1,0 +1,60 @@
+{
+  "extends": "../../tsconfig.json",
+  "compilerOptions": {
+    "lib": [
+      "dom",
+      "dom.iterable",
+      "esnext"
+    ],
+    "allowJs": true,
+    "noEmit": true,
+    "module": "ESNext",
+    "moduleResolution": "Bundler",
+    "isolatedModules": true,
+    "jsx": "preserve",
+    "incremental": true,
+    "baseUrl": "src",
+    "paths": {
+      "utils/*": ["utils/*"],
+      "components/*": ["components/*"],
+      "hooks/*": ["hooks/*"],
+      "contexts/*": ["contexts/*"],
+      "styles/*": ["styles/*"],
+      "constant/*": ["constant/*"]
+    },
+    "downlevelIteration": true,
+    "allowSyntheticDefaultImports": true,
+    // custom config
+    "types": [
+      "node",
+      "webpack-env"
+    ],
+    "typeRoots": [
+      "../../node_modules/@types",
+      "../../@types",
+      "./node_modules/@types",
+      "./@types",
+      "./types",
+    ],
+    "plugins": [
+      {
+        "name": "next"
+      }
+    ],
+    "strictNullChecks": true
+  },
+  "include": [
+    "emotion.d.ts",
+    "next-env.d.ts",
+    "next.config.ts",
+    "**/*.ts",
+    "**/*.tsx",
+    ".next/types/**/*.ts",
+    "../echo/src/types/**/*.ts",
+    "../../node_modules/vitest/globals.d.ts",
+  ],
+  "exclude": [
+    "node_modules",
+    "dist"
+  ],
+}

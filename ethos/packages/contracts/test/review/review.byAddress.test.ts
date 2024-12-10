@@ -1,11 +1,11 @@
-import { type HardhatEthersSigner } from '@nomicfoundation/hardhat-ethers/signers';
-import { loadFixture } from '@nomicfoundation/hardhat-toolbox/network-helpers';
+import { type HardhatEthersSigner } from '@nomicfoundation/hardhat-ethers/signers.js';
+import { loadFixture } from '@nomicfoundation/hardhat-toolbox/network-helpers.js';
 import { expect } from 'chai';
-import { type EthosReview } from '../../typechain-types';
-import { common } from '../utils/common';
-import { DEFAULT, REVIEW_PARAMS } from '../utils/defaults';
-import { createDeployer, type EthosDeployer } from '../utils/deployEthos';
-import { type EthosUser } from '../utils/ethosUser';
+import { type EthosReview } from '../../typechain-types/index.js';
+import { common } from '../utils/common.js';
+import { DEFAULT, REVIEW_PARAMS } from '../utils/defaults.js';
+import { createDeployer, type EthosDeployer } from '../utils/deployEthos.js';
+import { type EthosUser } from '../utils/ethosUser.js';
 
 describe('EthosReview Leave Review by Address', () => {
   let deployer: EthosDeployer;
@@ -98,5 +98,35 @@ describe('EthosReview Leave Review by Address', () => {
     )
       .to.be.revertedWithCustomError(deployer.ethosProfile.contract, 'ProfileNotFoundForAddress')
       .withArgs(nonEthosUser.address);
+  });
+
+  it('should properly track review IDs in mappings', async () => {
+    // Create first review
+    await userA.review({ address: userB.signer.address });
+
+    // Create second review
+    await userB.review({ address: userA.signer.address });
+
+    // Check reviewIdsByAuthorAddress
+    const userAreviewId = await ethosReview.reviewIdsByAuthorAddress(userA.signer.address, 0n);
+    expect(userAreviewId).to.equal(0); // First review ID
+
+    const userBReviewId = await ethosReview.reviewIdsByAuthorAddress(userB.signer.address, 0n);
+    expect(userBReviewId).to.equal(1); // Second review ID
+
+    // Check reviewIdsBySubjectAddress
+    const reviewForUserA = await ethosReview.reviewIdsBySubjectAddress(userA.signer.address, 0n);
+    expect(reviewForUserA).to.equal(1); // Second review ID
+
+    const reviewForUserB = await ethosReview.reviewIdsBySubjectAddress(userB.signer.address, 0n);
+    expect(reviewForUserB).to.equal(0); // First review ID
+  });
+
+  it('should not store review IDs in attestation mapping for address reviews', async () => {
+    await userA.review({ address: userB.signer.address });
+
+    // The hash can be any bytes32 value since we're just verifying it's empty
+    const dummyHash = DEFAULT.EMPTY_BYTES;
+    await expect(ethosReview.reviewIdsByAttestationHash(dummyHash, 0n)).to.be.reverted;
   });
 });

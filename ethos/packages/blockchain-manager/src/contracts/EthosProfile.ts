@@ -2,7 +2,7 @@ import { type ContractLookup, TypeChain } from '@ethos/contracts';
 import { isValidAddress } from '@ethos/helpers';
 import { toNumber, type ContractRunner, type ContractTransactionResponse } from 'ethers';
 import { isAddressEqual, zeroAddress, type Address, isAddress, getAddress } from 'viem';
-import { type Profile, type ProfileId } from '../types';
+import { type Profile, type ProfileId } from '../types.js';
 
 export class EthosProfile {
   public readonly address: Address;
@@ -87,15 +87,20 @@ export class EthosProfile {
    * @returns Transaction response.
    */
   async deleteAddressAtIndex(index: number): Promise<ContractTransactionResponse> {
-    return await this.contract.deleteAddressAtIndex(index);
+    return await this.contract.deleteAddressAtIndex(index, false);
   }
 
   /**
-   * Checks if an address is compromised.
-   * @returns True if the address is compromised, false otherwise.
+   * Deletes an address from an Ethos profile.
+   * @param address Address to delete.
+   * @param markAsCompromised Whether to mark the address as compromised.
+   * @returns Transaction response.
    */
-  async checkIsAddressCompromised(address: Address): Promise<boolean> {
-    return await this.contract.checkIsAddressCompromised(address);
+  async deleteAddress(
+    address: Address,
+    markAsCompromised: boolean,
+  ): Promise<ContractTransactionResponse> {
+    return await this.contract.deleteAddress(address, markAsCompromised);
   }
 
   /**

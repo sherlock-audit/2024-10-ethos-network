@@ -1,10 +1,10 @@
-import { loadFixture } from '@nomicfoundation/hardhat-toolbox/network-helpers';
+import { loadFixture } from '@nomicfoundation/hardhat-toolbox/network-helpers.js';
 import { expect } from 'chai';
-import { type EthosVouch } from '../../typechain-types';
-import { mapVouch } from '../utils/conversion';
-import { DEFAULT } from '../utils/defaults';
-import { createDeployer, type EthosDeployer } from '../utils/deployEthos';
-import { type EthosUser } from '../utils/ethosUser';
+import { type EthosVouch } from '../../typechain-types/index.js';
+import { mapVouch } from '../utils/conversion.js';
+import { DEFAULT, VOUCH_PARAMS } from '../utils/defaults.js';
+import { createDeployer, type EthosDeployer } from '../utils/deployEthos.js';
+import { type EthosUser } from '../utils/ethosUser.js';
 
 describe('EthosVouch Lookups', () => {
   let deployer: EthosDeployer;
@@ -29,7 +29,7 @@ describe('EthosVouch Lookups', () => {
       authorProfileId: userA.profileId,
       authorAddress: userA.signer.address,
       subjectProfileId: userB.profileId,
-      stakeToken: DEFAULT.PAYMENT_TOKEN,
+      balance: DEFAULT.PAYMENT_AMOUNT,
       comment: DEFAULT.COMMENT,
       metadata: DEFAULT.METADATA,
       archived: false,
@@ -52,5 +52,33 @@ describe('EthosVouch Lookups', () => {
         userB.profileId + 1n,
       ),
     ).to.be.revertedWithCustomError(deployer.ethosVouch.contract, 'WrongSubjectProfileIdForVouch');
+  });
+
+  it('should return 0 balance for archived vouches', async () => {
+    // Setup: Create a vouch
+    const { vouchId } = await userA.vouch(userB);
+
+    // Check initial balance
+    const initialBalance = await userA.getVouchBalance(vouchId);
+    expect(initialBalance).to.be.gt(0);
+
+    // Archive the vouch by unvouching
+    await userA.unvouch(vouchId);
+
+    // Check balances after archiving
+    const archivedBalance = await userA.getVouchBalance(vouchId);
+    expect(archivedBalance).to.equal(0);
+  });
+
+  it('should return correct balance for active vouches', async () => {
+    // Create a vouch with a specific amount
+    const { vouchId } = await userA.vouch(userB);
+
+    // Get balances
+    const balance = await userB.getVouchBalance(vouchId);
+
+    // Balance should be greater than 0 but less than or equal to initial amount
+    expect(balance).to.be.gt(0);
+    expect(balance).to.be.lte(VOUCH_PARAMS.paymentAmount);
   });
 });

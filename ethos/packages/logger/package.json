@@ -3,23 +3,16 @@
   "version": "1.1.0",
   "description": "Pino logger",
   "main": "dist/index.js",
-  "module": "dist/index.mjs",
-  "exports": {
-    ".": {
-      "types": "./dist/index.d.ts",
-      "import": "./dist/index.mjs",
-      "require": "./dist/index.js"
-    }
-  },
+  "type": "module",
   "types": "dist/index.d.ts",
   "author": "Ethos Network Inc.",
   "license": "UNLICENSED",
   "scripts": {
-    "build": "tsup --config ../tsup.config.ts",
-    "watch": "tsup --config ../tsup.config.ts --clean false --watch"
+    "build": "tsc -b",
+    "watch": "tsc -w"
   },
   "dependencies": {
-    "pino": "^9.4.0",
-    "pino-pretty": "^11.2.2"
+    "pino": "^9.5.0",
+    "pino-pretty": "^13.0.0"
   }
 }

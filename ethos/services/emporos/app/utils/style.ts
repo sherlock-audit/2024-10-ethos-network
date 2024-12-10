@@ -1,0 +1,1 @@
+export const ANTD_SSR_STYLE_PLACEHOLDER_TOKEN = '__ANTD_STYLE__';

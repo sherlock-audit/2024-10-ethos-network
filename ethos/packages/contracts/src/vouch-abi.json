@@ -1,6 +1,11 @@
 [
   {
     "inputs": [],
+    "stateMutability": "nonpayable",
+    "type": "constructor"
+  },
+  {
+    "inputs": [],
     "name": "AccessControlBadConfirmation",
     "type": "error"
   },
@@ -29,6 +34,27 @@
       }
     ],
     "name": "AddressEmptyCode",
+    "type": "error"
+  },
+  {
+    "inputs": [
+      {
+        "internalType": "uint256",
+        "name": "vouchId",
+        "type": "uint256"
+      },
+      {
+        "internalType": "address",
+        "name": "caller",
+        "type": "address"
+      },
+      {
+        "internalType": "address",
+        "name": "author",
+        "type": "address"
+      }
+    ],
+    "name": "AddressNotVouchAuthor",
     "type": "error"
   },
   {
@@ -87,6 +113,11 @@
   },
   {
     "inputs": [],
+    "name": "ETHTransferFailed",
+    "type": "error"
+  },
+  {
+    "inputs": [],
     "name": "EnforcedPause",
     "type": "error"
   },
@@ -97,7 +128,44 @@
   },
   {
     "inputs": [],
-    "name": "FailedInnerCall",
+    "name": "FailedCall",
+    "type": "error"
+  },
+  {
+    "inputs": [
+      {
+        "internalType": "string",
+        "name": "message",
+        "type": "string"
+      }
+    ],
+    "name": "FeeTransferFailed",
+    "type": "error"
+  },
+  {
+    "inputs": [
+      {
+        "internalType": "uint256",
+        "name": "totalFees",
+        "type": "uint256"
+      },
+      {
+        "internalType": "uint256",
+        "name": "maxFees",
+        "type": "uint256"
+      }
+    ],
+    "name": "FeesExceedMaximum",
+    "type": "error"
+  },
+  {
+    "inputs": [],
+    "name": "InsufficientProtocolFeeBalance",
+    "type": "error"
+  },
+  {
+    "inputs": [],
+    "name": "InsufficientRewardsBalance",
     "type": "error"
   },
   {
@@ -112,6 +180,22 @@
     "type": "error"
   },
   {
+    "inputs": [
+      {
+        "internalType": "uint256",
+        "name": "newFee",
+        "type": "uint256"
+      }
+    ],
+    "name": "InvalidFeeMultiplier",
+    "type": "error"
+  },
+  {
+    "inputs": [],
+    "name": "InvalidFeeProtocolAddress",
+    "type": "error"
+  },
+  {
     "inputs": [],
     "name": "InvalidInitialization",
     "type": "error"
@@ -119,6 +203,27 @@
   {
     "inputs": [],
     "name": "InvalidSignature",
+    "type": "error"
+  },
+  {
+    "inputs": [],
+    "name": "InvalidSlashPercentage",
+    "type": "error"
+  },
+  {
+    "inputs": [
+      {
+        "internalType": "uint256",
+        "name": "vouches",
+        "type": "uint256"
+      },
+      {
+        "internalType": "string",
+        "name": "message",
+        "type": "string"
+      }
+    ],
+    "name": "MaximumVouchesExceeded",
     "type": "error"
   },
   {
@@ -151,6 +256,27 @@
   {
     "inputs": [],
     "name": "NotInitializing",
+    "type": "error"
+  },
+  {
+    "inputs": [],
+    "name": "NotSlasher",
+    "type": "error"
+  },
+  {
+    "inputs": [
+      {
+        "internalType": "address",
+        "name": "userAddress",
+        "type": "address"
+      }
+    ],
+    "name": "ProfileNotFoundForAddress",
+    "type": "error"
+  },
+  {
+    "inputs": [],
+    "name": "ReentrancyGuardReentrantCall",
     "type": "error"
   },
   {
@@ -204,6 +330,22 @@
   {
     "inputs": [
       {
+        "internalType": "bytes",
+        "name": "data",
+        "type": "bytes"
+      },
+      {
+        "internalType": "string",
+        "name": "message",
+        "type": "string"
+      }
+    ],
+    "name": "WithdrawalFailed",
+    "type": "error"
+  },
+  {
+    "inputs": [
+      {
         "internalType": "uint256",
         "name": "vouchId",
         "type": "uint256"
@@ -221,6 +363,77 @@
     "inputs": [],
     "name": "ZeroAddress",
     "type": "error"
+  },
+  {
+    "anonymous": false,
+    "inputs": [
+      {
+        "indexed": true,
+        "internalType": "uint256",
+        "name": "recipientProfileId",
+        "type": "uint256"
+      },
+      {
+        "indexed": false,
+        "internalType": "uint256",
+        "name": "amount",
+        "type": "uint256"
+      }
+    ],
+    "name": "DepositedToRewards",
+    "type": "event"
+  },
+  {
+    "anonymous": false,
+    "inputs": [
+      {
+        "indexed": false,
+        "internalType": "uint256",
+        "name": "newDonationFeeBasisPoints",
+        "type": "uint256"
+      }
+    ],
+    "name": "EntryDonationFeeBasisPointsUpdated",
+    "type": "event"
+  },
+  {
+    "anonymous": false,
+    "inputs": [
+      {
+        "indexed": false,
+        "internalType": "uint256",
+        "name": "newProtocolFeeBasisPoints",
+        "type": "uint256"
+      }
+    ],
+    "name": "EntryProtocolFeeBasisPointsUpdated",
+    "type": "event"
+  },
+  {
+    "anonymous": false,
+    "inputs": [
+      {
+        "indexed": false,
+        "internalType": "uint256",
+        "name": "newVouchersPoolFeeBasisPoints",
+        "type": "uint256"
+      }
+    ],
+    "name": "EntryVouchersPoolFeeBasisPointsUpdated",
+    "type": "event"
+  },
+  {
+    "anonymous": false,
+    "inputs": [
+      {
+        "indexed": false,
+        "internalType": "uint256",
+        "name": "newExitFeeBasisPoints",
+        "type": "uint256"
+      }
+    ],
+    "name": "ExitFeeBasisPointsUpdated",
+    "type": "event"
   },
   {
     "anonymous": false,
@@ -271,6 +484,19 @@
       }
     ],
     "name": "Paused",
+    "type": "event"
+  },
+  {
+    "anonymous": false,
+    "inputs": [
+      {
+        "indexed": false,
+        "internalType": "address",
+        "name": "newFeeProtocolAddress",
+        "type": "address"
+      }
+    ],
+    "name": "ProtocolFeeAddressUpdated",
     "type": "event"
   },
   {
@@ -352,6 +578,31 @@
     "anonymous": false,
     "inputs": [
       {
+        "indexed": true,
+        "internalType": "uint256",
+        "name": "authorProfileId",
+        "type": "uint256"
+      },
+      {
+        "indexed": false,
+        "internalType": "uint256",
+        "name": "slashBasisPoints",
+        "type": "uint256"
+      },
+      {
+        "indexed": false,
+        "internalType": "uint256",
+        "name": "totalSlashed",
+        "type": "uint256"
+      }
+    ],
+    "name": "Slashed",
+    "type": "event"
+  },
+  {
+    "anonymous": false,
+    "inputs": [
+      {
         "indexed": false,
         "internalType": "address",
         "name": "account",
@@ -381,6 +632,12 @@
         "internalType": "uint256",
         "name": "subjectProfileId",
         "type": "uint256"
+      },
+      {
+        "indexed": false,
+        "internalType": "uint256",
+        "name": "amountWithdrawn",
+        "type": "uint256"
       }
     ],
     "name": "Unvouched",
@@ -403,7 +660,7 @@
     "anonymous": false,
     "inputs": [
       {
-        "indexed": false,
+        "indexed": true,
         "internalType": "uint256",
         "name": "vouchId",
         "type": "uint256"
@@ -421,13 +678,75 @@
         "type": "uint256"
       },
       {
-        "indexed": true,
+        "indexed": false,
         "internalType": "uint256",
         "name": "amountStaked",
+        "type": "uint256"
+      },
+      {
+        "indexed": false,
+        "internalType": "uint256",
+        "name": "amountDeposited",
+        "type": "uint256"
+      }
+    ],
+    "name": "VouchIncreased",
+    "type": "event"
+  },
+  {
+    "anonymous": false,
+    "inputs": [
+      {
+        "indexed": true,
+        "internalType": "uint256",
+        "name": "vouchId",
+        "type": "uint256"
+      },
+      {
+        "indexed": true,
+        "internalType": "uint256",
+        "name": "authorProfileId",
+        "type": "uint256"
+      },
+      {
+        "indexed": true,
+        "internalType": "uint256",
+        "name": "subjectProfileId",
+        "type": "uint256"
+      },
+      {
+        "indexed": false,
+        "internalType": "uint256",
+        "name": "amountStaked",
+        "type": "uint256"
+      },
+      {
+        "indexed": false,
+        "internalType": "uint256",
+        "name": "amountDeposited",
         "type": "uint256"
       }
     ],
     "name": "Vouched",
+    "type": "event"
+  },
+  {
+    "anonymous": false,
+    "inputs": [
+      {
+        "indexed": true,
+        "internalType": "uint256",
+        "name": "accountProfileId",
+        "type": "uint256"
+      },
+      {
+        "indexed": false,
+        "internalType": "uint256",
+        "name": "amount",
+        "type": "uint256"
+      }
+    ],
+    "name": "WithdrawnFromRewards",
     "type": "event"
   },
   {
@@ -445,12 +764,51 @@
   },
   {
     "inputs": [],
+    "name": "BASIS_POINT_SCALE",
+    "outputs": [
+      {
+        "internalType": "uint256",
+        "name": "",
+        "type": "uint256"
+      }
+    ],
+    "stateMutability": "view",
+    "type": "function"
+  },
+  {
+    "inputs": [],
     "name": "DEFAULT_ADMIN_ROLE",
     "outputs": [
       {
         "internalType": "bytes32",
         "name": "",
         "type": "bytes32"
+      }
+    ],
+    "stateMutability": "view",
+    "type": "function"
+  },
+  {
+    "inputs": [],
+    "name": "MAX_SLASH_PERCENTAGE",
+    "outputs": [
+      {
+        "internalType": "uint256",
+        "name": "",
+        "type": "uint256"
+      }
+    ],
+    "stateMutability": "view",
+    "type": "function"
+  },
+  {
+    "inputs": [],
+    "name": "MAX_TOTAL_FEES",
+    "outputs": [
+      {
+        "internalType": "uint256",
+        "name": "",
+        "type": "uint256"
       }
     ],
     "stateMutability": "view",
@@ -497,6 +855,13 @@
   },
   {
     "inputs": [],
+    "name": "claimRewards",
+    "outputs": [],
+    "stateMutability": "nonpayable",
+    "type": "function"
+  },
+  {
+    "inputs": [],
     "name": "configuredMinimumVouchAmount",
     "outputs": [
       {
@@ -523,31 +888,64 @@
   },
   {
     "inputs": [],
-    "name": "expectedSigner",
+    "name": "entryDonationFeeBasisPoints",
     "outputs": [
       {
-        "internalType": "address",
+        "internalType": "uint256",
         "name": "",
-        "type": "address"
+        "type": "uint256"
       }
     ],
     "stateMutability": "view",
     "type": "function"
   },
   {
-    "inputs": [
-      {
-        "internalType": "uint256",
-        "name": "vouchId",
-        "type": "uint256"
-      }
-    ],
-    "name": "getBalanceByVouchId",
+    "inputs": [],
+    "name": "entryProtocolFeeBasisPoints",
     "outputs": [
       {
         "internalType": "uint256",
         "name": "",
         "type": "uint256"
+      }
+    ],
+    "stateMutability": "view",
+    "type": "function"
+  },
+  {
+    "inputs": [],
+    "name": "entryVouchersPoolFeeBasisPoints",
+    "outputs": [
+      {
+        "internalType": "uint256",
+        "name": "",
+        "type": "uint256"
+      }
+    ],
+    "stateMutability": "view",
+    "type": "function"
+  },
+  {
+    "inputs": [],
+    "name": "exitFeeBasisPoints",
+    "outputs": [
+      {
+        "internalType": "uint256",
+        "name": "",
+        "type": "uint256"
+      }
+    ],
+    "stateMutability": "view",
+    "type": "function"
+  },
+  {
+    "inputs": [],
+    "name": "expectedSigner",
+    "outputs": [
+      {
+        "internalType": "address",
+        "name": "",
+        "type": "address"
       }
     ],
     "stateMutability": "view",
@@ -618,17 +1016,17 @@
   {
     "inputs": [
       {
-        "internalType": "uint256",
-        "name": "vouchId",
-        "type": "uint256"
+        "internalType": "bytes32",
+        "name": "role",
+        "type": "bytes32"
       }
     ],
-    "name": "getWithdrawableAssetsByVouchId",
+    "name": "getRoleMembers",
     "outputs": [
       {
-        "internalType": "uint256",
+        "internalType": "address[]",
         "name": "",
-        "type": "uint256"
+        "type": "address[]"
       }
     ],
     "stateMutability": "view",
@@ -679,6 +1077,19 @@
   {
     "inputs": [
       {
+        "internalType": "uint256",
+        "name": "vouchId",
+        "type": "uint256"
+      }
+    ],
+    "name": "increaseVouch",
+    "outputs": [],
+    "stateMutability": "payable",
+    "type": "function"
+  },
+  {
+    "inputs": [
+      {
         "internalType": "address",
         "name": "_owner",
         "type": "address"
@@ -705,8 +1116,28 @@
       },
       {
         "internalType": "address",
-        "name": "_weth",
+        "name": "_feeProtocolAddress",
         "type": "address"
+      },
+      {
+        "internalType": "uint256",
+        "name": "_entryProtocolFeeBasisPoints",
+        "type": "uint256"
+      },
+      {
+        "internalType": "uint256",
+        "name": "_entryDonationFeeBasisPoints",
+        "type": "uint256"
+      },
+      {
+        "internalType": "uint256",
+        "name": "_entryVouchersPoolFeeBasisPoints",
+        "type": "uint256"
+      },
+      {
+        "internalType": "uint256",
+        "name": "_exitFeeBasisPoints",
+        "type": "uint256"
       }
     ],
     "name": "initialize",
@@ -729,6 +1160,19 @@
   },
   {
     "inputs": [],
+    "name": "maximumVouches",
+    "outputs": [
+      {
+        "internalType": "uint256",
+        "name": "",
+        "type": "uint256"
+      }
+    ],
+    "stateMutability": "view",
+    "type": "function"
+  },
+  {
+    "inputs": [],
     "name": "pause",
     "outputs": [],
     "stateMutability": "nonpayable",
@@ -742,6 +1186,19 @@
         "internalType": "bool",
         "name": "",
         "type": "bool"
+      }
+    ],
+    "stateMutability": "view",
+    "type": "function"
+  },
+  {
+    "inputs": [],
+    "name": "protocolFeeAddress",
+    "outputs": [
+      {
+        "internalType": "address",
+        "name": "",
+        "type": "address"
       }
     ],
     "stateMutability": "view",
@@ -813,11 +1270,95 @@
     "inputs": [
       {
         "internalType": "uint256",
+        "name": "",
+        "type": "uint256"
+      }
+    ],
+    "name": "rewards",
+    "outputs": [
+      {
+        "internalType": "uint256",
+        "name": "",
+        "type": "uint256"
+      }
+    ],
+    "stateMutability": "view",
+    "type": "function"
+  },
+  {
+    "inputs": [
+      {
+        "internalType": "uint256",
+        "name": "_newEntryDonationFeeBasisPoints",
+        "type": "uint256"
+      }
+    ],
+    "name": "setEntryDonationFeeBasisPoints",
+    "outputs": [],
+    "stateMutability": "nonpayable",
+    "type": "function"
+  },
+  {
+    "inputs": [
+      {
+        "internalType": "uint256",
+        "name": "_newEntryProtocolFeeBasisPoints",
+        "type": "uint256"
+      }
+    ],
+    "name": "setEntryProtocolFeeBasisPoints",
+    "outputs": [],
+    "stateMutability": "nonpayable",
+    "type": "function"
+  },
+  {
+    "inputs": [
+      {
+        "internalType": "uint256",
+        "name": "_newEntryVouchersPoolFeeBasisPoints",
+        "type": "uint256"
+      }
+    ],
+    "name": "setEntryVouchersPoolFeeBasisPoints",
+    "outputs": [],
+    "stateMutability": "nonpayable",
+    "type": "function"
+  },
+  {
+    "inputs": [
+      {
+        "internalType": "uint256",
+        "name": "_newExitFeeBasisPoints",
+        "type": "uint256"
+      }
+    ],
+    "name": "setExitFeeBasisPoints",
+    "outputs": [],
+    "stateMutability": "nonpayable",
+    "type": "function"
+  },
+  {
+    "inputs": [
+      {
+        "internalType": "uint256",
         "name": "amount",
         "type": "uint256"
       }
     ],
     "name": "setMinimumVouchAmount",
+    "outputs": [],
+    "stateMutability": "nonpayable",
+    "type": "function"
+  },
+  {
+    "inputs": [
+      {
+        "internalType": "address",
+        "name": "_protocolFeeAddress",
+        "type": "address"
+      }
+    ],
+    "name": "setProtocolFeeAddress",
     "outputs": [],
     "stateMutability": "nonpayable",
     "type": "function"
@@ -852,6 +1393,30 @@
       }
     ],
     "stateMutability": "view",
+    "type": "function"
+  },
+  {
+    "inputs": [
+      {
+        "internalType": "uint256",
+        "name": "authorProfileId",
+        "type": "uint256"
+      },
+      {
+        "internalType": "uint256",
+        "name": "slashBasisPoints",
+        "type": "uint256"
+      }
+    ],
+    "name": "slash",
+    "outputs": [
+      {
+        "internalType": "uint256",
+        "name": "",
+        "type": "uint256"
+      }
+    ],
+    "stateMutability": "nonpayable",
     "type": "function"
   },
   {
@@ -972,6 +1537,19 @@
   {
     "inputs": [
       {
+        "internalType": "uint256",
+        "name": "maximumVouches_",
+        "type": "uint256"
+      }
+    ],
+    "name": "updateMaximumVouches",
+    "outputs": [],
+    "stateMutability": "nonpayable",
+    "type": "function"
+  },
+  {
+    "inputs": [
+      {
         "internalType": "address",
         "name": "owner",
         "type": "address"
@@ -1064,11 +1642,6 @@
             "type": "address"
           },
           {
-            "internalType": "address",
-            "name": "stakeToken",
-            "type": "address"
-          },
-          {
             "internalType": "uint256",
             "name": "vouchId",
             "type": "uint256"
@@ -1076,6 +1649,11 @@
           {
             "internalType": "uint256",
             "name": "subjectProfileId",
+            "type": "uint256"
+          },
+          {
+            "internalType": "uint256",
+            "name": "balance",
             "type": "uint256"
           },
           {
@@ -1157,11 +1735,6 @@
             "type": "address"
           },
           {
-            "internalType": "address",
-            "name": "stakeToken",
-            "type": "address"
-          },
-          {
             "internalType": "uint256",
             "name": "vouchId",
             "type": "uint256"
@@ -1169,6 +1742,11 @@
           {
             "internalType": "uint256",
             "name": "subjectProfileId",
+            "type": "uint256"
+          },
+          {
+            "internalType": "uint256",
+            "name": "balance",
             "type": "uint256"
           },
           {
@@ -1301,6 +1879,126 @@
         "internalType": "uint256",
         "name": "",
         "type": "uint256"
+      },
+      {
+        "internalType": "uint256",
+        "name": "",
+        "type": "uint256"
+      }
+    ],
+    "name": "vouchIdByAuthorForSubjectProfileId",
+    "outputs": [
+      {
+        "internalType": "uint256",
+        "name": "",
+        "type": "uint256"
+      }
+    ],
+    "stateMutability": "view",
+    "type": "function"
+  },
+  {
+    "inputs": [
+      {
+        "internalType": "uint256",
+        "name": "",
+        "type": "uint256"
+      },
+      {
+        "internalType": "uint256",
+        "name": "",
+        "type": "uint256"
+      }
+    ],
+    "name": "vouchIdsByAuthor",
+    "outputs": [
+      {
+        "internalType": "uint256",
+        "name": "",
+        "type": "uint256"
+      }
+    ],
+    "stateMutability": "view",
+    "type": "function"
+  },
+  {
+    "inputs": [
+      {
+        "internalType": "uint256",
+        "name": "",
+        "type": "uint256"
+      },
+      {
+        "internalType": "uint256",
+        "name": "",
+        "type": "uint256"
+      }
+    ],
+    "name": "vouchIdsByAuthorIndex",
+    "outputs": [
+      {
+        "internalType": "uint256",
+        "name": "",
+        "type": "uint256"
+      }
+    ],
+    "stateMutability": "view",
+    "type": "function"
+  },
+  {
+    "inputs": [
+      {
+        "internalType": "uint256",
+        "name": "",
+        "type": "uint256"
+      },
+      {
+        "internalType": "uint256",
+        "name": "",
+        "type": "uint256"
+      }
+    ],
+    "name": "vouchIdsForSubjectProfileId",
+    "outputs": [
+      {
+        "internalType": "uint256",
+        "name": "",
+        "type": "uint256"
+      }
+    ],
+    "stateMutability": "view",
+    "type": "function"
+  },
+  {
+    "inputs": [
+      {
+        "internalType": "uint256",
+        "name": "",
+        "type": "uint256"
+      },
+      {
+        "internalType": "uint256",
+        "name": "",
+        "type": "uint256"
+      }
+    ],
+    "name": "vouchIdsForSubjectProfileIdIndex",
+    "outputs": [
+      {
+        "internalType": "uint256",
+        "name": "",
+        "type": "uint256"
+      }
+    ],
+    "stateMutability": "view",
+    "type": "function"
+  },
+  {
+    "inputs": [
+      {
+        "internalType": "uint256",
+        "name": "",
+        "type": "uint256"
       }
     ],
     "name": "vouches",
@@ -1326,11 +2024,6 @@
         "type": "address"
       },
       {
-        "internalType": "address",
-        "name": "stakeToken",
-        "type": "address"
-      },
-      {
         "internalType": "uint256",
         "name": "vouchId",
         "type": "uint256"
@@ -1338,6 +2031,11 @@
       {
         "internalType": "uint256",
         "name": "subjectProfileId",
+        "type": "uint256"
+      },
+      {
+        "internalType": "uint256",
+        "name": "balance",
         "type": "uint256"
       },
       {
@@ -1371,253 +2069,6 @@
         "internalType": "struct EthosVouch.ActivityCheckpoints",
         "name": "activityCheckpoints",
         "type": "tuple"
-      }
-    ],
-    "stateMutability": "view",
-    "type": "function"
-  },
-  {
-    "inputs": [
-      {
-        "internalType": "uint256",
-        "name": "author",
-        "type": "uint256"
-      },
-      {
-        "internalType": "uint256",
-        "name": "fromIdx",
-        "type": "uint256"
-      },
-      {
-        "internalType": "uint256",
-        "name": "maxLength",
-        "type": "uint256"
-      }
-    ],
-    "name": "vouchesByAuthorInRange",
-    "outputs": [
-      {
-        "components": [
-          {
-            "internalType": "bool",
-            "name": "archived",
-            "type": "bool"
-          },
-          {
-            "internalType": "bool",
-            "name": "unhealthy",
-            "type": "bool"
-          },
-          {
-            "internalType": "uint256",
-            "name": "authorProfileId",
-            "type": "uint256"
-          },
-          {
-            "internalType": "address",
-            "name": "authorAddress",
-            "type": "address"
-          },
-          {
-            "internalType": "address",
-            "name": "stakeToken",
-            "type": "address"
-          },
-          {
-            "internalType": "uint256",
-            "name": "vouchId",
-            "type": "uint256"
-          },
-          {
-            "internalType": "uint256",
-            "name": "subjectProfileId",
-            "type": "uint256"
-          },
-          {
-            "internalType": "string",
-            "name": "comment",
-            "type": "string"
-          },
-          {
-            "internalType": "string",
-            "name": "metadata",
-            "type": "string"
-          },
-          {
-            "components": [
-              {
-                "internalType": "uint256",
-                "name": "vouchedAt",
-                "type": "uint256"
-              },
-              {
-                "internalType": "uint256",
-                "name": "unvouchedAt",
-                "type": "uint256"
-              },
-              {
-                "internalType": "uint256",
-                "name": "unhealthyAt",
-                "type": "uint256"
-              }
-            ],
-            "internalType": "struct EthosVouch.ActivityCheckpoints",
-            "name": "activityCheckpoints",
-            "type": "tuple"
-          }
-        ],
-        "internalType": "struct EthosVouch.Vouch[]",
-        "name": "result",
-        "type": "tuple[]"
-      }
-    ],
-    "stateMutability": "view",
-    "type": "function"
-  },
-  {
-    "inputs": [
-      {
-        "internalType": "uint256",
-        "name": "author",
-        "type": "uint256"
-      }
-    ],
-    "name": "vouchesCountByAuthor",
-    "outputs": [
-      {
-        "internalType": "uint256",
-        "name": "",
-        "type": "uint256"
-      }
-    ],
-    "stateMutability": "view",
-    "type": "function"
-  },
-  {
-    "inputs": [
-      {
-        "internalType": "uint256",
-        "name": "subjectProfileId",
-        "type": "uint256"
-      }
-    ],
-    "name": "vouchesCountForSubjectProfileId",
-    "outputs": [
-      {
-        "internalType": "uint256",
-        "name": "",
-        "type": "uint256"
-      }
-    ],
-    "stateMutability": "view",
-    "type": "function"
-  },
-  {
-    "inputs": [
-      {
-        "internalType": "uint256",
-        "name": "subjectProfileId",
-        "type": "uint256"
-      },
-      {
-        "internalType": "uint256",
-        "name": "fromIdx",
-        "type": "uint256"
-      },
-      {
-        "internalType": "uint256",
-        "name": "maxLength",
-        "type": "uint256"
-      }
-    ],
-    "name": "vouchesForSubjectProfileIdInRange",
-    "outputs": [
-      {
-        "components": [
-          {
-            "internalType": "bool",
-            "name": "archived",
-            "type": "bool"
-          },
-          {
-            "internalType": "bool",
-            "name": "unhealthy",
-            "type": "bool"
-          },
-          {
-            "internalType": "uint256",
-            "name": "authorProfileId",
-            "type": "uint256"
-          },
-          {
-            "internalType": "address",
-            "name": "authorAddress",
-            "type": "address"
-          },
-          {
-            "internalType": "address",
-            "name": "stakeToken",
-            "type": "address"
-          },
-          {
-            "internalType": "uint256",
-            "name": "vouchId",
-            "type": "uint256"
-          },
-          {
-            "internalType": "uint256",
-            "name": "subjectProfileId",
-            "type": "uint256"
-          },
-          {
-            "internalType": "string",
-            "name": "comment",
-            "type": "string"
-          },
-          {
-            "internalType": "string",
-            "name": "metadata",
-            "type": "string"
-          },
-          {
-            "components": [
-              {
-                "internalType": "uint256",
-                "name": "vouchedAt",
-                "type": "uint256"
-              },
-              {
-                "internalType": "uint256",
-                "name": "unvouchedAt",
-                "type": "uint256"
-              },
-              {
-                "internalType": "uint256",
-                "name": "unhealthyAt",
-                "type": "uint256"
-              }
-            ],
-            "internalType": "struct EthosVouch.ActivityCheckpoints",
-            "name": "activityCheckpoints",
-            "type": "tuple"
-          }
-        ],
-        "internalType": "struct EthosVouch.Vouch[]",
-        "name": "result",
-        "type": "tuple[]"
-      }
-    ],
-    "stateMutability": "view",
-    "type": "function"
-  },
-  {
-    "inputs": [],
-    "name": "weth",
-    "outputs": [
-      {
-        "internalType": "address",
-        "name": "",
-        "type": "address"
       }
     ],
     "stateMutability": "view",

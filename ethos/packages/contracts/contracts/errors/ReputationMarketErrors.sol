@@ -22,3 +22,11 @@ error SlippageLimitExceeded(
   uint256 expectedVotes,
   uint256 slippageBasisPoints
 );
+error InvalidMarketConfigOption(string message);
+error FeeTransferFailed(string message);
+error InactiveMarket(uint256 profileId);
+error UnauthorizedGraduation();
+error UnauthorizedWithdrawal();
+error MarketNotGraduated();
+error NoFundsToWithdraw();
+error ZeroAddressNotAllowed();

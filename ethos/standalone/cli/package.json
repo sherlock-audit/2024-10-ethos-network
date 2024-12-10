@@ -1,0 +1,30 @@
+{
+  "name": "@ethos/cli",
+  "version": "0.1.0",
+  "description": "Ethos CLI",
+  "main": "dist/index.js",
+  "type": "module",
+  "bin": {
+    "ethos": "dist/index.js"
+  },
+  "types": "dist/index.d.ts",
+  "author": "Ethos Network Inc.",
+  "license": "UNLICENSED",
+  "scripts": {
+    "build": "tsc -b",
+    "exec": "tsx src/index.ts",
+    "postbuild": "chmod +x dist/index.js && npm i -g"
+  },
+  "dependencies": {
+    "@ethos/blockchain-manager": "^1.0.0",
+    "@ethos/config": "^1.0.0",
+    "@ethos/contracts": "^1.0.0",
+    "@ethos/env": "^1.0.0",
+    "@ethos/helpers": "^1.0.0",
+    "dotenv": "^16.4.5",
+    "ethers": "^6.13.4",
+    "viem": "^2.21.51",
+    "yargs": "^17.7.2",
+    "zod": "^3.23.8"
+  }
+}

@@ -2,18 +2,19 @@
 import { execSync } from 'node:child_process';
 import * as fs from 'node:fs';
 import * as path from 'node:path';
+import { fileURLToPath } from 'node:url';
 import { ETHOS_ENVIRONMENTS, type EthosEnvironment } from '@ethos/env';
 import * as dotenv from 'dotenv';
 import inquirer from 'inquirer';
 import yargs from 'yargs';
 import { hideBin } from 'yargs/helpers';
-import { type HardhatDefinedNetwork } from './scripts/utils';
+import { type HardhatDefinedNetwork } from './scripts/utils.js';
 import {
   contracts,
   type Contract,
   getNetworkByEnvironment,
   ETHOS_ENVIRONMENT_NETWORKS,
-} from './src';
+} from './src/index.js';
 
 dotenv.config();
 
@@ -26,17 +27,13 @@ Ethos Contract Dependencies
 No Dependencies/
   Contract Address Manager/
     ├── Interaction Control
-    ├── Ethos Escrow
-    ├── Ethos Vault Factory
     └── Signature Verifier/
         ├── Ethos Attestation
         ├── Ethos Discussion
         ├── Ethos Profile
         ├── Ethos Review
-        ├── Ethos Slash Penalty
         ├── Ethos Vote
-        ├── Ethos Vouch
-        └── Ethos Vault Manager
+        └── Ethos Vouch
 `;
 
   console.log(graph);
@@ -167,8 +164,6 @@ async function main(): Promise<void> {
   } else {
     usedCli = true;
   }
-  console.log(`args: ${JSON.stringify(args)}`);
-
   console.log(); // Add a newline
 
   let requiredEnvVars: string[];
@@ -277,15 +272,18 @@ async function deploy(
   console.log(`⏳ Deploying the contract to ${network}`);
 
   try {
-    execSync(`hardhat run scripts/deploy-contract.ts --network ${network}`, {
-      stdio: 'inherit',
-      env: {
-        ...process.env,
-        ETHOS_ENVIRONMENT: environment,
-        HARDHAT_DEPLOY_CONTRACT: contract,
-        HARDHAT_DEPLOY_ACTION: action,
+    execSync(
+      `NODE_OPTIONS='--no-warnings=ExperimentalWarning --experimental-loader ts-node/esm/transpile-only' hardhat run scripts/deploy-contract.ts --network ${network}`,
+      {
+        stdio: 'inherit',
+        env: {
+          ...process.env,
+          ETHOS_ENVIRONMENT: environment,
+          HARDHAT_DEPLOY_CONTRACT: contract,
+          HARDHAT_DEPLOY_ACTION: action,
+        },
       },
-    });
+    );
     console.log('💤 Waiting for transaction to finish ...');
     await new Promise((resolve) => setTimeout(resolve, 15000)); // Wait for 15 seconds
     console.log(`✅ Contract ${contract} deployed successfully on ${network}`);
@@ -304,7 +302,11 @@ function getContractAddress(
   contract: Contract,
   environment: EthosEnvironment,
 ): { address: string; proxyAddress: string } {
-  const contractPath = path.join(__dirname, 'src', `${contract}.json`);
+  const contractPath = path.join(
+    fileURLToPath(new URL('.', import.meta.url)),
+    'src',
+    `${contract}.json`,
+  );
 
   if (!fs.existsSync(contractPath)) {
     throw new Error(`Contract file not found: ${contractPath}`);
@@ -329,7 +331,11 @@ function getContractArgs(
   contract: Contract,
   environment: EthosEnvironment,
 ): { args: string[]; proxyArgs: string[] } {
-  const contractPath = path.join(__dirname, 'src', `${contract}.json`);
+  const contractPath = path.join(
+    fileURLToPath(new URL('.', import.meta.url)),
+    'src',
+    `${contract}.json`,
+  );
   const contractData = JSON.parse(fs.readFileSync(contractPath, 'utf8'));
 
   const isProxyContract = Boolean(contractData[environment].proxyAddress);
@@ -370,13 +376,16 @@ async function updateAddressManager(
   );
 
   try {
-    execSync(`hardhat run scripts/update-contract-management.ts --network ${network}`, {
-      stdio: 'inherit',
-      env: {
-        ...process.env,
-        ETHOS_ENVIRONMENT: environment,
+    execSync(
+      `NODE_OPTIONS='--no-warnings=ExperimentalWarning --experimental-loader ts-node/esm/transpile-only' hardhat run scripts/update-contract-management.ts --network ${network}`,
+      {
+        stdio: 'inherit',
+        env: {
+          ...process.env,
+          ETHOS_ENVIRONMENT: environment,
+        },
       },
-    });
+    );
     console.log('🎛️ Contract address management updated successfully.');
   } catch (error) {
     console.error('🚨 Failed to update contract address management:');

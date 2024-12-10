@@ -1,0 +1,27 @@
+generator client {
+  provider        = "prisma-client-js"
+  output          = "../../node_modules/@prisma-emporos/client"
+  // Make sure to generate Prisma client for Alpine correctly
+  binaryTargets   = ["native", "linux-musl-openssl-3.0.x"]
+  previewFeatures = ["metrics"]
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("EMPOROS_DB_URL")
+}
+
+model MarketUser {
+  id              String   @id
+  twitterUserId   String
+  twitterUsername String?  @db.Citext
+  twitterName     String?
+  avatarUrl       String?
+  embeddedWallet  String   @db.Citext
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  @@index([twitterUserId])
+  @@index([embeddedWallet])
+  @@map("users")
+}

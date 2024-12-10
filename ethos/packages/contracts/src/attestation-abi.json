@@ -1,6 +1,11 @@
 [
   {
     "inputs": [],
+    "stateMutability": "nonpayable",
+    "type": "constructor"
+  },
+  {
+    "inputs": [],
     "name": "AccessControlBadConfirmation",
     "type": "error"
   },
@@ -124,7 +129,7 @@
   },
   {
     "inputs": [],
-    "name": "FailedInnerCall",
+    "name": "FailedCall",
     "type": "error"
   },
   {
@@ -524,41 +529,48 @@
     "inputs": [
       {
         "internalType": "bytes32",
-        "name": "",
+        "name": "attestationHash",
         "type": "bytes32"
       }
     ],
     "name": "attestationByHash",
     "outputs": [
       {
-        "internalType": "bool",
-        "name": "archived",
-        "type": "bool"
-      },
-      {
-        "internalType": "uint256",
-        "name": "attestationId",
-        "type": "uint256"
-      },
-      {
-        "internalType": "uint256",
-        "name": "profileId",
-        "type": "uint256"
-      },
-      {
-        "internalType": "uint256",
-        "name": "createdAt",
-        "type": "uint256"
-      },
-      {
-        "internalType": "string",
-        "name": "account",
-        "type": "string"
-      },
-      {
-        "internalType": "string",
-        "name": "service",
-        "type": "string"
+        "components": [
+          {
+            "internalType": "bool",
+            "name": "archived",
+            "type": "bool"
+          },
+          {
+            "internalType": "uint256",
+            "name": "attestationId",
+            "type": "uint256"
+          },
+          {
+            "internalType": "uint256",
+            "name": "profileId",
+            "type": "uint256"
+          },
+          {
+            "internalType": "uint256",
+            "name": "createdAt",
+            "type": "uint256"
+          },
+          {
+            "internalType": "string",
+            "name": "account",
+            "type": "string"
+          },
+          {
+            "internalType": "string",
+            "name": "service",
+            "type": "string"
+          }
+        ],
+        "internalType": "struct IEthosAttestation.Attestation",
+        "name": "",
+        "type": "tuple"
       }
     ],
     "stateMutability": "view",
@@ -659,6 +671,25 @@
         "internalType": "bytes32",
         "name": "",
         "type": "bytes32"
+      }
+    ],
+    "stateMutability": "view",
+    "type": "function"
+  },
+  {
+    "inputs": [
+      {
+        "internalType": "bytes32",
+        "name": "",
+        "type": "bytes32"
+      }
+    ],
+    "name": "attestationIdByHash",
+    "outputs": [
+      {
+        "internalType": "uint256",
+        "name": "",
+        "type": "uint256"
       }
     ],
     "stateMutability": "view",
@@ -886,6 +917,25 @@
         "internalType": "uint256",
         "name": "",
         "type": "uint256"
+      }
+    ],
+    "stateMutability": "view",
+    "type": "function"
+  },
+  {
+    "inputs": [
+      {
+        "internalType": "bytes32",
+        "name": "role",
+        "type": "bytes32"
+      }
+    ],
+    "name": "getRoleMembers",
+    "outputs": [
+      {
+        "internalType": "address[]",
+        "name": "",
+        "type": "address[]"
       }
     ],
     "stateMutability": "view",

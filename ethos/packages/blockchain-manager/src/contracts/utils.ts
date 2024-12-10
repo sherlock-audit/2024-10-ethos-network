@@ -1,4 +1,4 @@
-import { isAddressEqualSafe, type UnionOptional } from '@ethos/helpers';
+import { type UnionOptional } from '@ethos/helpers';
 import retry, { type Options } from 'async-retry';
 import {
   type ContractRunner,
@@ -10,7 +10,6 @@ import {
   JsonRpcProvider,
   Wallet,
   getBytes,
-  parseUnits,
   solidityPackedKeccak256,
   getDefaultProvider,
   type AbstractProvider,
@@ -21,12 +20,10 @@ import {
   type JsonRpcApiProviderOptions,
   type ContractEventName,
   type Listener,
-  ethers,
 } from 'ethers';
-import { formatUnits, getAddress, zeroAddress, type Address } from 'viem';
-import { isAlchemyRateLimitError } from '../providers';
-import { type CancelListener } from '../types';
-import { ESCROW_TOKEN_ADDRESS, WETH9_TESTNET, WETH9_MAINNET } from './constants';
+import { type Address } from 'viem';
+import { isAlchemyRateLimitError } from '../providers.js';
+import { type CancelListener } from '../types.js';
 
 const RATE_LIMIT_RETRIES = 5;
 
@@ -106,8 +103,7 @@ class AsyncContractRunner implements ContractRunner {
 
   protected async signer(): Promise<Signer> {
     if (!this._signer) {
-      const signer = await (this.provider as JsonRpcApiProvider).getSigner();
-      this._signer = signer;
+      this._signer = await (this.provider as JsonRpcApiProvider).getSigner();
     }
 
     return this._signer;
@@ -161,30 +157,6 @@ export function formatMessageToSign(parameters: Param[]): Uint8Array {
   return getBytes(messageHash);
 }
 
-export function parseTokenAmount(value: string, tokenAddress: Address): bigint {
-  switch (tokenAddress) {
-    // Native token which is ETH
-    case zeroAddress:
-      return parseUnits(value, 18);
-    case ESCROW_TOKEN_ADDRESS:
-      return parseUnits(value, 18);
-    default:
-      throw new Error('Unsupported payment token');
-  }
-}
-
-export function formatTokenAmount(value: bigint, tokenAddress: Address): string {
-  switch (tokenAddress) {
-    // Native token which is ETH
-    case zeroAddress:
-      return formatUnits(value, 18);
-    case ESCROW_TOKEN_ADDRESS:
-      return formatUnits(value, 18);
-    default:
-      throw new Error('Unsupported payment token');
-  }
-}
-
 type EthosBaseContract = {
   address: Address;
   contractRunner: ContractRunner;
@@ -224,36 +196,6 @@ export async function getLogs(
   }
 
   throw lastError;
-}
-
-const signatures = {
-  WETH9: {
-    deposit: ethers.id('Deposit(address,uint256)'),
-    withdraw: ethers.id('Withdrawal(address,uint256)'),
-  },
-};
-
-/*
-Specifically decode WETH9 interactions, indicating withdrawals and deposits.
-*/
-export function decodeWETH9Log(log: Log): { deposit?: bigint; withdraw?: bigint } {
-  const address = getAddress(log.address);
-  const logSignature = log.topics[0];
-
-  // Check if this is a WETH9 transfer event for either testnet or mainnet
-  if (isAddressEqualSafe(address, WETH9_TESTNET) || isAddressEqualSafe(address, WETH9_MAINNET)) {
-    if (logSignature === signatures.WETH9.deposit) {
-      const [deposit] = ethers.AbiCoder.defaultAbiCoder().decode(['uint256'], log.data);
-
-      return { deposit };
-    } else if (logSignature === signatures.WETH9.withdraw) {
-      const [withdraw] = ethers.AbiCoder.defaultAbiCoder().decode(['uint256'], log.data);
-
-      return { withdraw };
-    }
-  }
-
-  return {};
 }
 
 /**

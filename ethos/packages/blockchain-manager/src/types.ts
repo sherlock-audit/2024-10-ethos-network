@@ -75,7 +75,6 @@ export function getScoreValue(score: number): ScoreValue {
 export type Review = {
   id: number;
   author: Address;
-  authorProfileId: ProfileId;
   subject: Address;
   score: ScoreType;
   comment: string;
@@ -102,9 +101,10 @@ export type Vouch = {
   id: number;
   archived: boolean;
   unhealthy: boolean;
+  authorAddress: Address;
   authorProfileId: ProfileId;
-  stakeToken: Address;
   subjectProfileId: ProfileId;
+  balance: bigint;
   comment: string;
   metadata: string;
   activityCheckpoints: {

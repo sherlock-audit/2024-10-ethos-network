@@ -22,4 +22,5 @@ concurrently([
   })),
   { name: 'echo', command: 'npm run start:echo', prefixColor: 'yellow' },
   { name: 'web', command: 'npm run start:web', prefixColor: 'magenta' },
+  { name: 'emporos', command: 'npm run start:markets', prefixColor: 'green' },
 ]);

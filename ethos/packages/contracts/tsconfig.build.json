@@ -1,9 +1,4 @@
 {
-    "extends": "./tsconfig.json",
-    "compilerOptions": {
-      "module": "esnext",
-      "outDir": "dist",
-      "moduleResolution": "node"
-    },
-    "include": ["src/**/*"]
-  }
+  "extends": "./tsconfig.json",
+  "include": ["src/**/*"]
+}

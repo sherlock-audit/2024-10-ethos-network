@@ -1,6 +1,8 @@
-import { type HardhatEthersSigner } from '@nomicfoundation/hardhat-ethers/signers';
+import { type HardhatEthersSigner } from '@nomicfoundation/hardhat-ethers/signers.js';
 import { ethers } from 'ethers';
-import { network, ethers as ethersHardhat } from 'hardhat';
+import hre from 'hardhat';
+
+const { network, ethers: ethersHardhat } = hre;
 
 export const common = {
   signatureForRegisterAddress: async (
@@ -30,12 +32,12 @@ export const common = {
     _evidence: string,
     _signatureSigner: HardhatEthersSigner,
   ): Promise<string> => {
-    const messageTypes = ['uint256', 'uint256', 'string', 'string', 'string'];
+    const encodedData = ethers.AbiCoder.defaultAbiCoder().encode(
+      ['uint256', 'uint256', 'string', 'string', 'string'],
+      [_profileId, _randValue, _account, _service, _evidence],
+    );
 
-    const message = [_profileId, _randValue, _account, _service, _evidence];
-
-    const messageHash = ethers.solidityPackedKeccak256(messageTypes, message);
-
+    const messageHash = ethers.keccak256(encodedData);
     const messageHashBinary = ethers.getBytes(messageHash);
 
     const signature = await _signatureSigner.signMessage(messageHashBinary);
@@ -80,4 +82,34 @@ export const common = {
     // Return a signer for the impersonated account
     return await ethersHardhat.getSigner(address);
   },
+
+  attestationHash: async (account: string, service: string): Promise<string> => {
+    // Use defaultAbiCoder to match the contract's abi.encode behavior
+    const encodedData = ethers.AbiCoder.defaultAbiCoder().encode(
+      ['string', 'string'],
+      [service, account],
+    );
+
+    return ethers.keccak256(encodedData);
+  },
 };
+
+export function calculateFee(
+  total: bigint,
+  feeBasisPoints: bigint,
+): { deposit: bigint; fee: bigint } {
+  // fee is deducted from the amount as a percentage
+  // algebra:
+  // total = (1 + fee) * deposit
+  // (total/ (1 + fee)) = deposit
+  const BASIS_POINTS = 10000n;
+  const deposit = mulDivFloor(total, BASIS_POINTS, BASIS_POINTS + feeBasisPoints);
+  const fee = total - deposit;
+
+  return { deposit, fee };
+}
+
+export function mulDivFloor(amount: bigint, numerator: bigint, denominator: bigint): bigint {
+  // Replicate Solidity's mulDiv with floor rounding
+  return (amount * numerator) / denominator;
+}

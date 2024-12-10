@@ -1,7 +1,9 @@
-import { loadFixture } from '@nomicfoundation/hardhat-toolbox/network-helpers';
+import { loadFixture } from '@nomicfoundation/hardhat-toolbox/network-helpers.js';
 import { expect } from 'chai';
-import { ethers } from 'hardhat';
-import { smartContractNames } from './utils/mock.names';
+import hre from 'hardhat';
+import { smartContractNames } from './utils/mock.names.js';
+
+const { ethers } = hre;
 
 describe('InteractionControl', () => {
   // eslint-disable-next-line @typescript-eslint/explicit-function-return-type
@@ -280,6 +282,25 @@ describe('InteractionControl', () => {
       expect(await ethosProfile.paused()).to.be.eq(true);
       expect(await ethosReview.paused()).to.be.eq(true);
     });
+
+    it('should skip already paused contracts', async () => {
+      const { OWNER, interactionControl, ethosAttestation, ethosProfile, ethosReview } =
+        await loadFixture(deployFixture);
+
+      // First pause just one contract through InteractionControl
+      await interactionControl.connect(OWNER).pauseContract(smartContractNames.attestation);
+      expect(await ethosAttestation.paused()).to.be.eq(true);
+      expect(await ethosProfile.paused()).to.be.eq(false);
+      expect(await ethosReview.paused()).to.be.eq(false);
+
+      // pauseAll should work without reverting
+      await interactionControl.connect(OWNER).pauseAll();
+
+      // All contracts should now be paused
+      expect(await ethosAttestation.paused()).to.be.eq(true);
+      expect(await ethosProfile.paused()).to.be.eq(true);
+      expect(await ethosReview.paused()).to.be.eq(true);
+    });
   });
 
   describe('unpauseAll', () => {
@@ -313,6 +334,31 @@ describe('InteractionControl', () => {
       expect(await ethosReview.paused()).to.be.eq(true);
 
       await interactionControl.connect(OWNER).unpauseAll();
+      expect(await ethosAttestation.paused()).to.be.eq(false);
+      expect(await ethosProfile.paused()).to.be.eq(false);
+      expect(await ethosReview.paused()).to.be.eq(false);
+    });
+
+    it('should skip already unpaused contracts', async () => {
+      const { OWNER, interactionControl, ethosAttestation, ethosProfile, ethosReview } =
+        await loadFixture(deployFixture);
+
+      // First pause all contracts
+      await interactionControl.connect(OWNER).pauseAll();
+      expect(await ethosAttestation.paused()).to.be.eq(true);
+      expect(await ethosProfile.paused()).to.be.eq(true);
+      expect(await ethosReview.paused()).to.be.eq(true);
+
+      // Then unpause just one contract through InteractionControl
+      await interactionControl.connect(OWNER).unpauseContract(smartContractNames.attestation);
+      expect(await ethosAttestation.paused()).to.be.eq(false);
+      expect(await ethosProfile.paused()).to.be.eq(true);
+      expect(await ethosReview.paused()).to.be.eq(true);
+
+      // unpauseAll should work without reverting
+      await interactionControl.connect(OWNER).unpauseAll();
+
+      // All contracts should now be unpaused
       expect(await ethosAttestation.paused()).to.be.eq(false);
       expect(await ethosProfile.paused()).to.be.eq(false);
       expect(await ethosReview.paused()).to.be.eq(false);

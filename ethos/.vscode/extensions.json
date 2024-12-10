@@ -1,5 +1,7 @@
 {
   "recommendations": [
+    "austenc.tailwind-docs",
+    "bradlc.vscode-tailwindcss",
     "DavidAnson.vscode-markdownlint",
     "dbaeumer.vscode-eslint",
     "EditorConfig.EditorConfig",

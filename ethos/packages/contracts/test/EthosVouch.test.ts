@@ -1,7 +1,9 @@
-import { loadFixture, time } from '@nomicfoundation/hardhat-toolbox/network-helpers';
+import { loadFixture, time } from '@nomicfoundation/hardhat-toolbox/network-helpers.js';
 import { expect } from 'chai';
-import { ethers } from 'hardhat';
-import { smartContractNames } from './utils/mock.names';
+import hre from 'hardhat';
+import { smartContractNames } from './utils/mock.names.js';
+
+const { ethers } = hre;
 
 describe('EthosVouch', () => {
   const DEFAULT_COMMENT = 'default comment';
@@ -118,9 +120,6 @@ describe('EthosVouch', () => {
     await ethosVoteProxy.waitForDeployment();
     const ethosVoteAddress = await ethosVoteProxy.getAddress();
     const ethosVote = await ethers.getContractAt('EthosVote', ethosVoteAddress);
-
-    const weth9 = await ethers.deployContract('WETH9', []);
-
     const vouch = await ethers.getContractFactory('EthosVouch');
     const vouchImplementation = await ethers.deployContract('EthosVouch', []);
     const vouchImpAddress = await vouchImplementation.getAddress();
@@ -132,7 +131,11 @@ describe('EthosVouch', () => {
         EXPECTED_SIGNER.address,
         signatureVerifierAddress,
         contractAddressManagerAddress,
-        await weth9.getAddress(),
+        FEE_PROTOCOL_ACC.address,
+        0, // Entry protocol fee basis points
+        0, // Entry donation fee basis points
+        0, // Entry vouchers pool fee basis points
+        0, // Exit fee basis points
       ]),
     );
 
@@ -140,66 +143,8 @@ describe('EthosVouch', () => {
     const ethosVouchAddress = await ethosVouchProxy.getAddress();
     const ethosVouch = await ethers.getContractAt('EthosVouch', ethosVouchAddress);
 
-    const feeProtocolAddress = await FEE_PROTOCOL_ACC.getAddress();
-
-    const entryfeeProtocolBasisPoint = 100n; // 1%
-    const entryfeeDonationBasisPoint = 100n; // 1%
-    const entryfeeVouchersPoolBasisPoint = 300n; // 3%
-    const exitFeeBasisPoint = 100n; // 1%
-
-    const vaultManager = await ethers.getContractFactory('EthosVaultManager');
-    const vaultManagerImplementation = await ethers.deployContract('EthosVaultManager', []);
-
-    const ethosVaultManagerImpAddress = await vaultManagerImplementation.getAddress();
-    const ethosVaultManagerProxy = await ERC1967Proxy.deploy(
-      ethosVaultManagerImpAddress,
-      vaultManager.interface.encodeFunctionData('initialize', [
-        OWNER.address,
-        ADMIN.address,
-        EXPECTED_SIGNER.address,
-        signatureVerifierAddress,
-        contractAddressManagerAddress,
-        feeProtocolAddress,
-        entryfeeProtocolBasisPoint,
-        entryfeeDonationBasisPoint,
-        entryfeeVouchersPoolBasisPoint,
-        exitFeeBasisPoint,
-      ]),
-    );
-
-    await ethosVaultManagerProxy.waitForDeployment();
-    const ethosVaultManagerAddress = await ethosVaultManagerProxy.getAddress();
-    const ethosVaultManager = await ethers.getContractAt(
-      'EthosVaultManager',
-      ethosVaultManagerAddress,
-    );
-
-    const ethosVaultFactory = await ethers.deployContract('EthosVaultFactory', []);
-    const ethosVaultFactoryAddress = await ethosVaultFactory.getAddress();
-
-    const ethosEscrow = await ethers.deployContract('EthosEscrow', [contractAddressManagerAddress]);
-    const ethosEscrowAddress = await ethosEscrow.getAddress();
-    const slash = await ethers.getContractFactory('EthosSlashPenalty');
-    const slashImplementation = await ethers.deployContract('EthosSlashPenalty', []);
-    const slashImpAddress = await slashImplementation.getAddress();
-    const ethosSlashPenaltyProxy = await ERC1967Proxy.deploy(
-      slashImpAddress,
-      slash.interface.encodeFunctionData('initialize', [
-        OWNER.address,
-        ADMIN.address,
-        EXPECTED_SIGNER.address,
-        signatureVerifierAddress,
-        contractAddressManagerAddress,
-      ]),
-    );
-
-    await ethosSlashPenaltyProxy.waitForDeployment();
-    const ethosSlashPenaltyAddress = await ethosSlashPenaltyProxy.getAddress();
-
     const rejectContract = await ethers.deployContract('RejectETHReceiver');
     const rejectETHAddr = await rejectContract.getAddress();
-
-    // update Smart Contracts
 
     await contractAddressManager.updateContractAddressesForNames(
       [
@@ -209,10 +154,6 @@ describe('EthosVouch', () => {
         ethosVoteAddress,
         ethosVouchAddress,
         interactionControlAddress,
-        ethosVaultManagerAddress,
-        ethosVaultFactoryAddress,
-        ethosSlashPenaltyAddress,
-        ethosEscrowAddress,
       ],
       [
         smartContractNames.attestation,
@@ -221,10 +162,6 @@ describe('EthosVouch', () => {
         smartContractNames.vote,
         smartContractNames.vouch,
         smartContractNames.interactionControl,
-        smartContractNames.vaultManager,
-        smartContractNames.vaultFactory,
-        smartContractNames.slashPenalty,
-        smartContractNames.escrow,
       ],
     );
 
@@ -299,7 +236,7 @@ describe('EthosVouch', () => {
       ACCOUNT_NAME_IVAN,
       ATTESTATION_EVIDENCE_0,
       ATTESTATION_EVIDENCE_1,
-
+      FEE_PROTOCOL_ACC,
       PAYMENT_TOKEN_1,
       VOTER_0,
       VOTER_1,
@@ -312,9 +249,7 @@ describe('EthosVouch', () => {
       ethosReview,
       ethosVote,
       ethosVouch,
-      ethosVaultManager,
       contractAddressManager,
-      weth9,
       rejectETHAddr,
       ERC1967Proxy,
       provider,
@@ -409,11 +344,13 @@ describe('EthosVouch', () => {
         EXPECTED_SIGNER,
         signatureVerifier,
         contractAddressManager,
+        FEE_PROTOCOL_ACC,
       } = await loadFixture(deployFixture);
 
       const Vouch = await ethers.getContractFactory('EthosVouchMock');
       const implementation = await ethers.deployContract('EthosVouchMock', []);
       const implementationAddress = await implementation.getAddress();
+
       await expect(
         ethosVouch
           .connect(OWNER)
@@ -425,7 +362,11 @@ describe('EthosVouch', () => {
               EXPECTED_SIGNER.address,
               await signatureVerifier.getAddress(),
               await contractAddressManager.getAddress(),
-              ADMIN.address,
+              FEE_PROTOCOL_ACC.address,
+              0,
+              0,
+              0,
+              0,
             ]),
           ),
       ).to.revertedWithCustomError(ethosVouch, 'InvalidInitialization');
@@ -677,58 +618,6 @@ describe('EthosVouch', () => {
           .withArgs(4, 4);
       });
 
-      it('should push correct id to vouchIdsByAuthor for multiple vouches for native coin', async () => {
-        const {
-          ethosVouch,
-          PROFILE_CREATOR_0,
-          PROFILE_CREATOR_1,
-          VOUCHER_0,
-          VOUCHER_1,
-          ethosProfile,
-          OWNER,
-        } = await loadFixture(deployFixture);
-
-        let PAYMENT_AMOUNT = ethers.parseEther('0.0123');
-
-        // create a profile
-        await ethosProfile.connect(OWNER).inviteAddress(VOUCHER_0.address);
-        await ethosProfile.connect(OWNER).inviteAddress(PROFILE_CREATOR_0.address);
-        await ethosProfile.connect(OWNER).inviteAddress(PROFILE_CREATOR_1.address);
-        await ethosProfile.connect(OWNER).inviteAddress(VOUCHER_1.address);
-        await ethosProfile.connect(VOUCHER_0).createProfile(1);
-        await ethosProfile.connect(PROFILE_CREATOR_0).createProfile(1);
-        await ethosProfile.connect(PROFILE_CREATOR_1).createProfile(1);
-        await ethosProfile.connect(VOUCHER_1).createProfile(1);
-
-        // 0
-        await ethosVouch.connect(VOUCHER_0).vouchByProfileId(3, DEFAULT_COMMENT, DEFAULT_METADATA, {
-          value: PAYMENT_AMOUNT,
-        });
-
-        let vouches = await ethosVouch.vouchesByAuthorInRange(2, 0, 1);
-        expect(vouches[0].vouchId).to.equal(0, 'Wrong vouchId, 0');
-
-        // 1
-        PAYMENT_AMOUNT = ethers.parseEther('0.0123456');
-
-        await ethosVouch.connect(VOUCHER_0).vouchByProfileId(4, DEFAULT_COMMENT, DEFAULT_METADATA, {
-          value: PAYMENT_AMOUNT,
-        });
-
-        vouches = await ethosVouch.vouchesByAuthorInRange(2, 0, 2);
-        expect(vouches[1].vouchId).to.equal(1, 'Wrong vouchId, 1');
-
-        // 2
-        PAYMENT_AMOUNT = ethers.parseEther('0.0123456789');
-
-        await ethosVouch.connect(VOUCHER_0).vouchByProfileId(5, DEFAULT_COMMENT, DEFAULT_METADATA, {
-          value: PAYMENT_AMOUNT,
-        });
-
-        vouches = await ethosVouch.vouchesByAuthorInRange(2, 0, 110);
-        expect(vouches[2].vouchId).to.equal(2, 'Wrong vouchId, 2');
-      });
-
       it('should increase vouchCount', async () => {
         const {
           ethosVouch,
@@ -767,54 +656,6 @@ describe('EthosVouch', () => {
     });
 
     describe('vouchByAddress', () => {
-      it('should revert if vouching for a profile that does not exist', async () => {
-        const { ethosVouch, ethosProfile, ADMIN, VOUCHER_0, PROFILE_CREATOR_0, OWNER } =
-          await loadFixture(deployFixture);
-
-        await ethosProfile.connect(OWNER).inviteAddress(VOUCHER_0.address);
-        await ethosProfile.connect(OWNER).inviteAddress(PROFILE_CREATOR_0.address);
-
-        await ethosProfile.connect(VOUCHER_0).createProfile(1);
-
-        // 0
-        await expect(
-          ethosVouch
-            .connect(VOUCHER_0)
-            .vouchByAddress(
-              await PROFILE_CREATOR_0.getAddress(),
-              DEFAULT_COMMENT,
-              DEFAULT_METADATA,
-            ),
-        )
-          .to.be.revertedWithCustomError(ethosProfile, 'ProfileNotFoundForAddress')
-          .withArgs(await PROFILE_CREATOR_0.getAddress());
-
-        // 1
-        await expect(
-          ethosVouch
-            .connect(VOUCHER_0)
-            .vouchByAddress(await ADMIN.getAddress(), DEFAULT_COMMENT, DEFAULT_METADATA, {
-              value: ethers.parseEther('0.01'),
-            }),
-        )
-          .to.be.revertedWithCustomError(ethosProfile, 'ProfileNotFoundForAddress')
-          .withArgs(await ADMIN.getAddress());
-
-        // 2
-        await ethosProfile.connect(PROFILE_CREATOR_0).createProfile(1);
-
-        await expect(
-          ethosVouch
-            .connect(VOUCHER_0)
-            .vouchByAddress(
-              await PROFILE_CREATOR_0.getAddress(),
-              DEFAULT_COMMENT,
-              DEFAULT_METADATA,
-              { value: ethers.parseEther('0.01') },
-            ),
-        ).not.to.be.reverted;
-      });
-
       it('should revert if vouching for zero address', async () => {
         const { ethosVouch, ethosProfile, VOUCHER_0, PROFILE_CREATOR_0, OWNER } =
           await loadFixture(deployFixture);
@@ -848,7 +689,7 @@ describe('EthosVouch', () => {
             .withArgs(11);
         });
 
-        it('should revert if NotVoterForVouch', async () => {
+        it('should revert if not the original vouch author', async () => {
           const {
             ethosVouch,
             VOUCHER_0,
@@ -879,12 +720,12 @@ describe('EthosVouch', () => {
             });
 
           await expect(ethosVouch.connect(VOUCHER_1).unvouch(0))
-            .to.be.revertedWithCustomError(ethosVouch, 'NotAuthorForVouch')
-            .withArgs(0, 5);
+            .to.be.revertedWithCustomError(ethosVouch, 'AddressNotVouchAuthor')
+            .withArgs(0, VOUCHER_1.address, VOUCHER_0.address); // reverts with vouchId, caller, author
 
           await expect(ethosVouch.connect(OTHER_0).unvouch(0))
-            .to.be.revertedWithCustomError(ethosVouch, 'NotAuthorForVouch')
-            .withArgs(0, 6);
+            .to.be.revertedWithCustomError(ethosVouch, 'AddressNotVouchAuthor')
+            .withArgs(0, OTHER_0.address, VOUCHER_0.address); // reverts with vouchId, caller, author
 
           // 1
           await ethosVouch
@@ -894,12 +735,12 @@ describe('EthosVouch', () => {
             });
 
           await expect(ethosVouch.connect(VOUCHER_0).unvouch(1))
-            .to.be.revertedWithCustomError(ethosVouch, 'NotAuthorForVouch')
-            .withArgs(1, 4);
+            .to.be.revertedWithCustomError(ethosVouch, 'AddressNotVouchAuthor')
+            .withArgs(1, VOUCHER_0.address, VOUCHER_1.address);
 
           await expect(ethosVouch.connect(OTHER_0).unvouch(1))
-            .to.be.revertedWithCustomError(ethosVouch, 'NotAuthorForVouch')
-            .withArgs(1, 6);
+            .to.be.revertedWithCustomError(ethosVouch, 'AddressNotVouchAuthor')
+            .withArgs(1, OTHER_0.address, VOUCHER_1.address);
         });
 
         it('should revert if AlreadyUnvouched', async () => {
@@ -1285,360 +1126,6 @@ describe('EthosVouch', () => {
 
           await expect(ethosVouch.targetExistsAndAllowedForId(11)).to.eventually.deep.equal(
             [false, false],
-            'Wrong for 3',
-          );
-        });
-      });
-
-      describe('vouchesByAuthorInRange', () => {
-        it('should return empty if no vouches', async () => {
-          const {
-            ethosVouch,
-            ethosProfile,
-            VOUCHER_0,
-            VOUCHER_1,
-            PROFILE_CREATOR_0,
-            PROFILE_CREATOR_1,
-            OWNER,
-          } = await loadFixture(deployFixture);
-
-          await ethosProfile.connect(OWNER).inviteAddress(VOUCHER_0.address);
-          await ethosProfile.connect(OWNER).inviteAddress(PROFILE_CREATOR_0.address);
-          await ethosProfile.connect(OWNER).inviteAddress(PROFILE_CREATOR_1.address);
-          await ethosProfile.connect(OWNER).inviteAddress(VOUCHER_1.address);
-          await ethosProfile.connect(PROFILE_CREATOR_0).createProfile(1);
-          await ethosProfile.connect(PROFILE_CREATOR_1).createProfile(1);
-          await ethosProfile.connect(VOUCHER_0).createProfile(1);
-          await ethosProfile.connect(VOUCHER_1).createProfile(1);
-
-          // 0
-          expect(await ethosVouch.vouchesByAuthorInRange(3, 0, 1)).to.be.deep.equal(
-            [],
-            'Wrong for 0',
-          );
-
-          // 1
-          await ethosVouch
-            .connect(VOUCHER_1)
-            .vouchByProfileId(2, DEFAULT_COMMENT, DEFAULT_METADATA, {
-              value: ethers.parseEther('0.0123'),
-            });
-
-          expect(await ethosVouch.vouchesByAuthorInRange(3, 0, 1)).to.be.deep.equal(
-            [],
-            'Wrong for 1',
-          );
-        });
-
-        it('should return empty if maxLength == 0', async () => {
-          const {
-            ethosVouch,
-            ethosProfile,
-            VOUCHER_0,
-            VOUCHER_1,
-            PROFILE_CREATOR_0,
-            PROFILE_CREATOR_1,
-            OWNER,
-          } = await loadFixture(deployFixture);
-
-          await ethosProfile.connect(OWNER).inviteAddress(VOUCHER_0.address);
-          await ethosProfile.connect(OWNER).inviteAddress(PROFILE_CREATOR_0.address);
-          await ethosProfile.connect(OWNER).inviteAddress(PROFILE_CREATOR_1.address);
-          await ethosProfile.connect(OWNER).inviteAddress(VOUCHER_1.address);
-          await ethosProfile.connect(PROFILE_CREATOR_0).createProfile(1);
-          await ethosProfile.connect(PROFILE_CREATOR_1).createProfile(1);
-          await ethosProfile.connect(VOUCHER_0).createProfile(1);
-          await ethosProfile.connect(VOUCHER_1).createProfile(1);
-
-          // 0
-          expect(await ethosVouch.vouchesByAuthorInRange(3, 0, 0)).to.be.deep.equal(
-            [],
-            'Wrong for 0',
-          );
-
-          // 1
-          await ethosVouch
-            .connect(VOUCHER_1)
-            .vouchByProfileId(2, DEFAULT_COMMENT, DEFAULT_METADATA, {
-              value: ethers.parseEther('0.0123'),
-            });
-
-          expect(await ethosVouch.vouchesByAuthorInRange(3, 0, 0)).to.be.deep.equal(
-            [],
-            'Wrong for 1',
-          );
-
-          // 2
-          expect(await ethosVouch.vouchesByAuthorInRange(4, 0, 0)).to.be.deep.equal(
-            [],
-            'Wrong for 2',
-          );
-        });
-
-        it('should return empty if fromIdx >= vouchIdsLength', async () => {
-          const {
-            ethosVouch,
-            ethosProfile,
-            VOUCHER_0,
-            VOUCHER_1,
-            PROFILE_CREATOR_0,
-            PROFILE_CREATOR_1,
-            OWNER,
-          } = await loadFixture(deployFixture);
-
-          await ethosProfile.connect(OWNER).inviteAddress(VOUCHER_0.address);
-          await ethosProfile.connect(OWNER).inviteAddress(PROFILE_CREATOR_0.address);
-          await ethosProfile.connect(OWNER).inviteAddress(PROFILE_CREATOR_1.address);
-          await ethosProfile.connect(OWNER).inviteAddress(VOUCHER_1.address);
-          await ethosProfile.connect(PROFILE_CREATOR_0).createProfile(1);
-          await ethosProfile.connect(PROFILE_CREATOR_1).createProfile(1);
-          await ethosProfile.connect(VOUCHER_0).createProfile(1);
-          await ethosProfile.connect(VOUCHER_1).createProfile(1);
-
-          // 0
-          expect(await ethosVouch.vouchesByAuthorInRange(3, 1, 2)).to.be.deep.equal(
-            [],
-            'Wrong for 0',
-          );
-
-          // 1
-          await ethosVouch
-            .connect(VOUCHER_1)
-            .vouchByProfileId(2, DEFAULT_COMMENT, DEFAULT_METADATA, {
-              value: ethers.parseEther('0.0123'),
-            });
-
-          expect(await ethosVouch.vouchesByAuthorInRange(3, 2, 3)).to.be.deep.equal(
-            [],
-            'Wrong for 1',
-          );
-
-          // 2
-          expect(await ethosVouch.vouchesByAuthorInRange(4, 1, 4)).to.be.deep.equal(
-            [],
-            'Wrong for 2',
-          );
-
-          // 3
-          expect(await ethosVouch.vouchesByAuthorInRange(4, 2, 4)).to.be.deep.equal(
-            [],
-            'Wrong for 3',
-          );
-        });
-      });
-
-      describe('vouchesCountForSubjectProfileId', () => {
-        it('should return correct count', async () => {
-          const {
-            ethosVouch,
-            VOUCHER_0,
-            VOUCHER_1,
-            PROFILE_CREATOR_0,
-            PROFILE_CREATOR_1,
-            ethosProfile,
-            OWNER,
-          } = await loadFixture(deployFixture);
-
-          await ethosProfile.connect(OWNER).inviteAddress(VOUCHER_0.address);
-          await ethosProfile.connect(OWNER).inviteAddress(PROFILE_CREATOR_0.address);
-          await ethosProfile.connect(OWNER).inviteAddress(PROFILE_CREATOR_1.address);
-          await ethosProfile.connect(OWNER).inviteAddress(VOUCHER_1.address);
-          await ethosProfile.connect(PROFILE_CREATOR_0).createProfile(1);
-          await ethosProfile.connect(PROFILE_CREATOR_1).createProfile(1);
-          await ethosProfile.connect(VOUCHER_0).createProfile(1);
-          await ethosProfile.connect(VOUCHER_1).createProfile(1);
-
-          expect(await ethosVouch.vouchesCountForSubjectProfileId(1)).to.be.equal(
-            0,
-            'Wrong count before for profileId 0',
-          );
-          expect(await ethosVouch.vouchesCountForSubjectProfileId(2)).to.be.equal(
-            0,
-            'Wrong count before for profileId 1',
-          );
-
-          // 0
-          await ethosVouch
-            .connect(VOUCHER_0)
-            .vouchByProfileId(2, DEFAULT_COMMENT, DEFAULT_METADATA, {
-              value: ethers.parseEther('0.0123'),
-            });
-
-          expect(await ethosVouch.vouchesCountForSubjectProfileId(1)).to.be.equal(
-            0,
-            'Wrong count before for profileId 0, 0',
-          );
-          expect(await ethosVouch.vouchesCountForSubjectProfileId(2)).to.be.equal(
-            1,
-            'Wrong count before for profileId 1, 0',
-          );
-
-          // 1
-          await ethosVouch
-            .connect(VOUCHER_1)
-            .vouchByProfileId(1, DEFAULT_COMMENT, DEFAULT_METADATA, {
-              value: ethers.parseEther('0.0123456'),
-            });
-
-          expect(await ethosVouch.vouchesCountForSubjectProfileId(1)).to.be.equal(
-            1,
-            'Wrong count before for profileId 0, 1',
-          );
-          expect(await ethosVouch.vouchesCountForSubjectProfileId(2)).to.be.equal(
-            1,
-            'Wrong count before for profileId 1, 1',
-          );
-
-          // 1
-          await ethosVouch
-            .connect(VOUCHER_0)
-            .vouchByProfileId(1, DEFAULT_COMMENT, DEFAULT_METADATA, {
-              value: ethers.parseEther('0.0123456'),
-            });
-
-          expect(await ethosVouch.vouchesCountForSubjectProfileId(1)).to.be.equal(
-            2,
-            'Wrong count before for profileId 0, 2',
-          );
-          expect(await ethosVouch.vouchesCountForSubjectProfileId(2)).to.be.equal(
-            1,
-            'Wrong count before for profileId 1, 2',
-          );
-        });
-      });
-
-      describe('vouchesForSubjectProfileIdInRange', () => {
-        it('should return empty if no vouches', async () => {
-          const {
-            ethosVouch,
-            ethosProfile,
-            VOUCHER_0,
-            VOUCHER_1,
-            PROFILE_CREATOR_0,
-            PROFILE_CREATOR_1,
-            OWNER,
-          } = await loadFixture(deployFixture);
-
-          await ethosProfile.connect(OWNER).inviteAddress(VOUCHER_0.address);
-          await ethosProfile.connect(OWNER).inviteAddress(PROFILE_CREATOR_0.address);
-          await ethosProfile.connect(OWNER).inviteAddress(PROFILE_CREATOR_1.address);
-          await ethosProfile.connect(OWNER).inviteAddress(VOUCHER_1.address);
-          await ethosProfile.connect(PROFILE_CREATOR_0).createProfile(1);
-          await ethosProfile.connect(PROFILE_CREATOR_1).createProfile(1);
-          await ethosProfile.connect(VOUCHER_0).createProfile(1);
-          await ethosProfile.connect(VOUCHER_1).createProfile(1);
-
-          // 0
-          expect(await ethosVouch.vouchesForSubjectProfileIdInRange(1, 0, 1)).to.be.deep.equal(
-            [],
-            'Wrong for 0',
-          );
-
-          // 1
-          await ethosVouch
-            .connect(VOUCHER_1)
-            .vouchByProfileId(2, DEFAULT_COMMENT, DEFAULT_METADATA, {
-              value: ethers.parseEther('0.0123'),
-            });
-
-          expect(await ethosVouch.vouchesForSubjectProfileIdInRange(1, 0, 1)).to.be.deep.equal(
-            [],
-            'Wrong for 1',
-          );
-        });
-
-        it('should return empty if maxLength == 0', async () => {
-          const {
-            ethosVouch,
-            ethosProfile,
-            VOUCHER_0,
-            VOUCHER_1,
-            PROFILE_CREATOR_0,
-            PROFILE_CREATOR_1,
-            OWNER,
-          } = await loadFixture(deployFixture);
-
-          await ethosProfile.connect(OWNER).inviteAddress(VOUCHER_0.address);
-          await ethosProfile.connect(OWNER).inviteAddress(PROFILE_CREATOR_0.address);
-          await ethosProfile.connect(OWNER).inviteAddress(PROFILE_CREATOR_1.address);
-          await ethosProfile.connect(OWNER).inviteAddress(VOUCHER_1.address);
-          await ethosProfile.connect(PROFILE_CREATOR_0).createProfile(1);
-          await ethosProfile.connect(PROFILE_CREATOR_1).createProfile(1);
-          await ethosProfile.connect(VOUCHER_0).createProfile(1);
-          await ethosProfile.connect(VOUCHER_1).createProfile(1);
-
-          // 0
-          expect(await ethosVouch.vouchesForSubjectProfileIdInRange(1, 0, 0)).to.be.deep.equal(
-            [],
-            'Wrong for 0',
-          );
-
-          // 1
-          await ethosVouch
-            .connect(VOUCHER_1)
-            .vouchByProfileId(2, DEFAULT_COMMENT, DEFAULT_METADATA, {
-              value: ethers.parseEther('0.0123'),
-            });
-
-          expect(await ethosVouch.vouchesForSubjectProfileIdInRange(1, 0, 0)).to.be.deep.equal(
-            [],
-            'Wrong for 1',
-          );
-
-          // 2
-          expect(await ethosVouch.vouchesForSubjectProfileIdInRange(2, 1, 0)).to.be.deep.equal(
-            [],
-            'Wrong for 2',
-          );
-        });
-
-        it('should return empty if fromIdx >= vouchIdsLength', async () => {
-          const {
-            ethosVouch,
-            ethosProfile,
-            VOUCHER_0,
-            VOUCHER_1,
-            PROFILE_CREATOR_0,
-            PROFILE_CREATOR_1,
-            OWNER,
-          } = await loadFixture(deployFixture);
-
-          await ethosProfile.connect(OWNER).inviteAddress(VOUCHER_0.address);
-          await ethosProfile.connect(OWNER).inviteAddress(PROFILE_CREATOR_0.address);
-          await ethosProfile.connect(OWNER).inviteAddress(PROFILE_CREATOR_1.address);
-          await ethosProfile.connect(OWNER).inviteAddress(VOUCHER_1.address);
-          await ethosProfile.connect(PROFILE_CREATOR_0).createProfile(1);
-          await ethosProfile.connect(PROFILE_CREATOR_1).createProfile(1);
-          await ethosProfile.connect(VOUCHER_0).createProfile(1);
-          await ethosProfile.connect(VOUCHER_1).createProfile(1);
-
-          // 0
-          expect(await ethosVouch.vouchesForSubjectProfileIdInRange(1, 1, 2)).to.be.deep.equal(
-            [],
-            'Wrong for 0',
-          );
-
-          // 1
-          await ethosVouch
-            .connect(VOUCHER_1)
-            .vouchByProfileId(2, DEFAULT_COMMENT, DEFAULT_METADATA, {
-              value: ethers.parseEther('0.0123'),
-            });
-
-          expect(await ethosVouch.vouchesForSubjectProfileIdInRange(2, 2, 3)).to.be.deep.equal(
-            [],
-            'Wrong for 1',
-          );
-
-          // 2
-          expect(await ethosVouch.vouchesForSubjectProfileIdInRange(2, 1, 4)).to.be.deep.equal(
-            [],
-            'Wrong for 2',
-          );
-
-          // 3
-          expect(await ethosVouch.vouchesForSubjectProfileIdInRange(1, 2, 4)).to.be.deep.equal(
-            [],
             'Wrong for 3',
           );
         });

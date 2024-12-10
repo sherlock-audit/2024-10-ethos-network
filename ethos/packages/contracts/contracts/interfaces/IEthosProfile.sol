@@ -10,7 +10,6 @@ interface IEthosProfile {
     uint256 profileId;
     uint256 createdAt;
     address[] addresses;
-    address[] removedAddresses;
     InviteInfo inviteInfo;
   }
 
@@ -33,6 +32,14 @@ interface IEthosProfile {
   ) external view returns (bool);
 
   function verifiedProfileIdForAddress(address _address) external view returns (uint256);
+
+  function profileStatusById(
+    uint256 profileId
+  ) external view returns (bool verified, bool archived, bool mock);
+
+  function profileStatusByAddress(
+    address _address
+  ) external view returns (bool verified, bool archived, bool mock, uint256 profileId);
 
   function profileIdByAddress(address user) external view returns (uint256);
 

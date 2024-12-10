@@ -31,6 +31,7 @@
     "rainbowkit",
     "sepolia",
     "setex",
+    "siwe",
     "Solhint",
     "sourcify",
     "Statsig",
@@ -59,4 +60,12 @@
   "solidity.linter": "solhint",
   "solidity.packageDefaultDependenciesDirectory": "./node_modules",
   "solidity.compileUsingRemoteVersion": "v0.8.25+commit.b61c2a91",
+  /* Enable tailwind intellisense outside of className attribute.
+     Variable name should end with "Class" e.g. menuItemClass */
+  "tailwindCSS.experimental.classRegex": [
+    ["Class \\=([^;]*);", "'([^']*)'"],
+    ["Class \\=([^;]*);", "\"([^\"]*)\""],
+    ["Class \\=([^;]*);", "\\`([^\\`]*)\\`"],
+    ["classNames=\\{([^}]*)\\}", "['\"`]([^'\"`]*)['\"`]"]
+  ],
 }

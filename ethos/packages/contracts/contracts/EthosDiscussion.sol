@@ -27,6 +27,16 @@ import { AccessControl } from "./utils/AccessControl.sol";
  * 2) This contract - this is to get the replies for the replies.
  */
 contract EthosDiscussion is ITargetStatus, Common, AccessControl, UUPSUpgradeable {
+  /**
+   * @dev Constructor that disables initializers when the implementation contract is deployed.
+   * This prevents the implementation contract from being initialized, which is important for
+   * security since the implementation contract should never be used directly, only through
+   * delegatecall from the proxy.
+   */
+  constructor() {
+    _disableInitializers();
+  }
+
   struct Reply {
     bool parentIsOriginalComment;
     address targetContract;
@@ -47,6 +57,11 @@ contract EthosDiscussion is ITargetStatus, Common, AccessControl, UUPSUpgradeabl
   /// The first mapping is by the target contract's address, the second is by the target's ID, and the value is an array of reply IDs.
   mapping(address => mapping(uint256 => uint256[]))
     private directReplyIdsByTargetAddressAndTargetId; // targetContract => taget id => reply ids. it can be 1) contractWithOriginalComment => comment id => reply ids; 2) EthosDiscussion => reply id => reply ids
+
+  // Add storage gap as the last storage variable
+  // This allows us to add new storage variables in future upgrades
+  // by reducing the size of this gap
+  uint256[50] private __gap;
 
   event ReplyAdded(uint256 author, address indexed targetContract, uint256 indexed replyId);
 

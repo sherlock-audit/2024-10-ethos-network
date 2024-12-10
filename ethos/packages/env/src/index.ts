@@ -1,2 +1,2 @@
-export { echoUrlMap, webUrlMap } from './service-urls';
-export { type EthosEnvironment, ETHOS_ENVIRONMENTS } from './environment';
+export { echoUrlMap, webUrlMap, blockExplorerUrlMap } from './service-urls.js';
+export { type EthosEnvironment, ETHOS_ENVIRONMENTS, isEnvironment } from './environment.js';

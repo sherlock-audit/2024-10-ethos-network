@@ -1,0 +1,14 @@
+diff --git a/node_modules/@ant-design/react-slick/es/default-props.js b/node_modules/@ant-design/react-slick/es/default-props.js
+index ece4d43..82dea69 100644
+--- a/node_modules/@ant-design/react-slick/es/default-props.js
++++ b/node_modules/@ant-design/react-slick/es/default-props.js
+@@ -57,6 +57,7 @@ var defaultProps = {
+   useTransform: true,
+   variableWidth: false,
+   vertical: false,
++  verticalSwiping: false,
+   waitForAnimate: true,
+   asNavFor: null
+ };
+#  please check this PR for more info
+# https://github.com/akiran/react-slick/pull/2406

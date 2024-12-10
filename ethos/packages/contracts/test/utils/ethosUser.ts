@@ -1,30 +1,30 @@
-import { type HardhatEthersSigner } from '@nomicfoundation/hardhat-ethers/signers';
-import { time } from '@nomicfoundation/hardhat-toolbox/network-helpers';
+import { type HardhatEthersSigner } from '@nomicfoundation/hardhat-ethers/signers.js';
+import { time } from '@nomicfoundation/hardhat-toolbox/network-helpers.js';
 import { type ContractTransactionResponse } from 'ethers';
-import { ethers, network } from 'hardhat';
+import hre from 'hardhat';
 import { zeroAddress } from 'viem';
-import { type IEthosProfile } from '../../typechain-types';
+import { type IEthosProfile } from '../../typechain-types/index.js';
+import { common } from './common.js';
 import {
   DEFAULT,
   REVIEW_PARAMS,
   type ReviewParams,
   VOUCH_PARAMS,
   type VouchParams,
-} from './defaults';
-import { type EthosDeployer } from './deployEthos';
-import { EthosVault } from './ethosVault';
+} from './defaults.js';
+import { type EthosDeployer } from './deployEthos.js';
+
+const { ethers, network } = hre;
 
 export class EthosUser {
   signer: HardhatEthersSigner;
   profileId: bigint;
   deployer: EthosDeployer;
-  vault: EthosVault | null;
 
   constructor(signer: HardhatEthersSigner, profileId: bigint, deployer: EthosDeployer) {
     this.signer = signer;
     this.profileId = profileId;
     this.deployer = deployer;
-    this.vault = null;
   }
 
   public async setBalance(amount: string): Promise<void> {
@@ -45,10 +45,11 @@ export class EthosUser {
       .addReview(
         params.score ?? REVIEW_PARAMS.score,
         params.address ?? zeroAddress,
-        DEFAULT.PAYMENT_TOKEN,
+        params.paymentToken ?? DEFAULT.PAYMENT_TOKEN,
         params.comment ?? REVIEW_PARAMS.comment,
         params.metadata ?? REVIEW_PARAMS.metadata,
         params.attestationDetails ?? REVIEW_PARAMS.attestationDetails,
+        { value: params.value ?? REVIEW_PARAMS.value },
       );
   }
 
@@ -65,7 +66,7 @@ export class EthosUser {
   public async vouch(
     subject: EthosUser,
     params: VouchParams = VOUCH_PARAMS,
-  ): Promise<{ vouchedAt: bigint; vouchId: bigint }> {
+  ): Promise<{ vouchedAt: bigint; vouchId: bigint; balance: bigint }> {
     await this.deployer.ethosVouch.contract
       ?.connect(this.signer)
       .vouchByProfileId(
@@ -79,42 +80,25 @@ export class EthosUser {
       this.profileId,
       subject.profileId,
     );
+    const balance = await this.getVouchBalance(vouch.vouchId);
 
-    return { vouchedAt, vouchId: vouch.vouchId };
+    return {
+      vouchedAt,
+      vouchId: vouch.vouchId,
+      balance,
+    };
   }
 
   public async unvouch(vouchId: bigint): Promise<ContractTransactionResponse> {
     return await this.deployer.ethosVouch.contract?.connect(this.signer).unvouch(vouchId);
   }
 
-  public async getVault(): Promise<EthosVault> {
-    if (!this.vault) {
-      const vaultAddress = await this.deployer.ethosVaultManager.contract
-        ?.connect(this.signer)
-        .getVaultByProfileId(this.profileId);
-
-      this.vault = await EthosVault.create(vaultAddress);
-    }
-
-    return this.vault;
-  }
-
   public async getVouchBalance(vouchId: bigint): Promise<bigint> {
-    return await this.deployer.ethosVouch.contract
-      ?.connect(this.signer)
-      .getBalanceByVouchId(vouchId);
+    return (await this.deployer.ethosVouch.contract.vouches(vouchId)).balance;
   }
 
-  public async getWithdrawableAssets(vouchId: bigint): Promise<bigint> {
-    return await this.deployer.ethosVouch.contract
-      ?.connect(this.signer)
-      .getWithdrawableAssetsByVouchId(vouchId);
-  }
-
-  public async getEscrowBalance(): Promise<bigint> {
-    return await this.deployer.ethosEscrow.contract
-      ?.connect(this.signer)
-      .balanceOf(this.profileId, DEFAULT.ESCROW_TOKEN_ADDRESS);
+  public async getRewardsBalance(): Promise<bigint> {
+    return await this.deployer.ethosVouch.contract?.rewards(this.profileId);
   }
 
   public async grantInvites(amount: number): Promise<ContractTransactionResponse> {
@@ -139,5 +123,19 @@ export class EthosUser {
 
   public async restoreProfile(): Promise<ContractTransactionResponse> {
     return await this.deployer.ethosProfile.contract?.connect(this.signer).restoreProfile();
+  }
+
+  public async registerAddress(address: string): Promise<ContractTransactionResponse> {
+    const randValue = Math.floor(Math.random() * 1000000);
+    const signature = await common.signatureForRegisterAddress(
+      address,
+      this.profileId.toString(),
+      randValue.toString(),
+      this.deployer.EXPECTED_SIGNER,
+    );
+
+    return await this.deployer.ethosProfile.contract
+      ?.connect(this.signer)
+      .registerAddress(address, this.profileId, randValue, signature);
   }
 }

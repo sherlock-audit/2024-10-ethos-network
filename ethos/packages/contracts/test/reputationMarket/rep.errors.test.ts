@@ -1,11 +1,12 @@
-import { loadFixture } from '@nomicfoundation/hardhat-toolbox/network-helpers';
+import { loadFixture } from '@nomicfoundation/hardhat-toolbox/network-helpers.js';
 import { expect, use } from 'chai';
 import chaiAsPromised from 'chai-as-promised';
 
-import { type ReputationMarket } from '../../typechain-types';
-import { createDeployer, type EthosDeployer } from '../utils/deployEthos';
-import { DEFAULT, MarketUser } from './utils';
+import { type ReputationMarket } from '../../typechain-types/index.js';
+import { createDeployer, type EthosDeployer } from '../utils/deployEthos.js';
+import { DEFAULT, MarketUser } from './utils.js';
 
+/* eslint-disable react-hooks/rules-of-hooks */
 use(chaiAsPromised as Chai.ChaiPlugin);
 
 describe('ReputationMarket Errors', () => {
@@ -26,10 +27,13 @@ describe('ReputationMarket Errors', () => {
 
     reputationMarket = deployer.reputationMarket.contract;
     DEFAULT.reputationMarket = reputationMarket;
+    DEFAULT.profileId = ethosUserA.profileId;
 
     await reputationMarket
       .connect(deployer.ADMIN)
-      .createMarket(DEFAULT.profileId, { value: DEFAULT.initialLiquidity });
+      .createMarketWithConfigAdmin(ethosUserA.signer.address, 0, {
+        value: DEFAULT.initialLiquidity,
+      });
   });
 
   it('should revert with InsufficientFunds when buying a vote with insufficient funds', async () => {
@@ -40,9 +44,11 @@ describe('ReputationMarket Errors', () => {
   });
 
   it('should revert with InsufficientInitialLiquidity when creating a market with insufficient initial liquidity', async () => {
-    const newProfileId = 2;
+    const ethosUserB = await deployer.createUser();
     await expect(
-      reputationMarket.connect(deployer.ADMIN).createMarket(newProfileId, DEFAULT.value),
+      reputationMarket
+        .connect(deployer.ADMIN)
+        .createMarketWithConfigAdmin(ethosUserB.signer.address, 0, DEFAULT.value),
     ).to.be.revertedWithCustomError(reputationMarket, 'InsufficientInitialLiquidity');
   });
 

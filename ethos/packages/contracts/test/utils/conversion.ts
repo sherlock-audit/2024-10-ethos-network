@@ -1,4 +1,4 @@
-import { type EthosVouch } from '../../typechain-types';
+import { type EthosVouch } from '../../typechain-types/index.js';
 
 export function mapVouch(
   vouch: EthosVouch.VouchStructOutput | undefined,
@@ -10,7 +10,7 @@ export function mapVouch(
     unhealthy: vouch.unhealthy,
     authorProfileId: vouch.authorProfileId,
     authorAddress: vouch.authorAddress,
-    stakeToken: vouch.stakeToken,
+    balance: vouch.balance,
     vouchId: vouch.vouchId,
     subjectProfileId: vouch.subjectProfileId,
     comment: vouch.comment,

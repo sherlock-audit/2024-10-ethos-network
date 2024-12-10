@@ -1,24 +1,23 @@
 {
   "root": true,
   "env": {
-    "es2022": true,
-    "jest/globals": true
+    "es2023": true
   },
   "extends": [
     "eslint:recommended",
     "love",
-    "plugin:jest/recommended",
+    "plugin:vitest/recommended",
     "prettier",
     "plugin:react-hooks/recommended"
   ],
   "plugins": [
     "unicorn",
-    "jest",
+    "vitest",
     "prettier",
     "@stylistic/js"
   ],
   "parserOptions": {
-    "ecmaVersion": 2022
+    "ecmaVersion": 2023
   },
   "rules": {
     "@stylistic/js/padding-line-between-statements": [
@@ -94,6 +93,7 @@
     ],
     "@typescript-eslint/strict-boolean-expressions": "off",
     "array-callback-return": "off",
+    "func-style": ["error", "declaration"],
     "import/consistent-type-specifier-style": ["error", "prefer-inline"],
     "import/no-duplicates": ["error", { "prefer-inline": true }],
     "import/order": [
@@ -106,6 +106,13 @@
       }
     ],
     "no-implicit-coercion": "error",
+    "no-restricted-syntax": [
+      "error",
+      {
+        "selector": "ImportDeclaration[source.value=/\\.json$/]:not(:has(ImportAttribute[key.name='type'][value.value='json']))",
+        "message": "JSON imports must include `with { type: \"json\" }` for ESM compatibility with Node.js in echo."
+      }
+    ],
     "no-restricted-imports": ["error", {
       "patterns": [
         {
@@ -119,13 +126,18 @@
         {
           "group": ["components/icons/*", "!components/icons/*.svg"],
           "message": "All icons should be imported from the components/icons/index.ts file"
+        },
+        {
+          "group": ["@prisma/client"],
+          "message": "Don't import directly from @prisma/client. Import from @prisma-pg/client or @prisma-timescale/client"
         }
       ]
-    }
-  ],
+    }],
     "prettier/prettier": "error",
+    "radix": "error",
     "unicorn/prefer-node-protocol": "error",
-    "no-console": ["error", { "allow": ["warn", "error"] }]
+    "no-console": ["error", { "allow": ["warn", "error"] }],
+    "vitest/no-disabled-tests": "error"
   },
   "settings": {
     "import/parsers": {
@@ -144,6 +156,47 @@
     }
   },
   "overrides": [
+    {
+      "files": [
+        "./packages/common-ui/**/*.ts",
+        "./packages/common-ui/**/*.tsx"
+      ],
+      "settings": {
+        "react": {
+          "version": "detect"
+        }
+      },
+      "rules": {
+        "@typescript-eslint/explicit-function-return-type": "off",
+        "@typescript-eslint/no-floating-promises": "off",
+        "@typescript-eslint/no-misused-promises": "off",
+        "@typescript-eslint/triple-slash-reference": "off",
+        "react/forbid-component-props": [
+          "error",
+          {
+            "forbid": [
+              { "propName": "style", "message": "Use the 'css' prop from '@emotion/react' instead. More details: https://emotion.sh/docs/css-prop#use-the-css-prop" }
+            ]
+          }
+        ],
+        "react/forbid-dom-props": [
+          "error",
+          {
+            "forbid": [
+              { "propName": "style", "message": "Use the 'css' prop from '@emotion/react' instead. More details: https://emotion.sh/docs/css-prop#use-the-css-prop" }
+            ]
+          }
+        ],
+        "react/jsx-child-element-spacing": "error",
+        "react/jsx-curly-brace-presence": ["error", { "props": "never", "children": "never" }],
+        "react/jsx-fragments": ["error", "syntax"],
+        "react/jsx-no-useless-fragment": "error",
+        "react/no-invalid-html-attribute": "error",
+        "react/no-unknown-property": ["error", { "ignore": ["css"] }],
+        "react/prop-types": "off",
+        "react/self-closing-comp": ["error", { "component": true, "html": true }]
+      }
+    },
     {
       "files": [
         "./services/web/**/*.ts",
@@ -243,13 +296,18 @@
         "linkComponents": [
           { "name": "Link", "linkAttribute": "to" },
           { "name": "NavLink", "linkAttribute": "to" }
-        ],
-        "import/resolver": {
-          "typescript": {}
-        }
+        ]
       },
       "rules": {
         "@typescript-eslint/explicit-function-return-type": "off",
+        "import/extensions": [
+          "error",
+          "ignorePackages",
+          {
+            "ts": "always",
+            "tsx": "always"
+          }
+        ],
         "react/jsx-child-element-spacing": "error",
         "react/jsx-curly-brace-presence": ["error", { "props": "never", "children": "never" }],
         "react/jsx-fragments": ["error", "syntax"],
@@ -257,7 +315,10 @@
         "react/no-invalid-html-attribute": "error",
         "react/no-unknown-property": ["error", { "ignore": ["css"] }],
         "react/prop-types": "off",
-        "react/self-closing-comp": ["error", { "component": true, "html": true }]
+        "react/self-closing-comp": ["error", { "component": true, "html": true }],
+        "@typescript-eslint/no-floating-promises": "off",
+        "@typescript-eslint/no-misused-promises": "off",
+        "@typescript-eslint/no-throw-literal": "off"
       }
     }
   ]

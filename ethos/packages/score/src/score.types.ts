@@ -1,4 +1,9 @@
-import { type ScoreCalculation } from './scoreCalculation';
+import { type ScoreCalculation } from './scoreCalculation.js';
+
+export type ScoreConfig = {
+  rootCalculation: ScoreCalculation;
+  elementDefinitions: ScoreElement[];
+};
 
 /**
  * Represents an arbitrary score element.

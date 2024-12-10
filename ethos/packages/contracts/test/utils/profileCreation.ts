@@ -1,5 +1,5 @@
-import { type HardhatEthersSigner } from '@nomicfoundation/hardhat-ethers/signers';
-import { type EthosProfile } from '../../typechain-types';
+import { type HardhatEthersSigner } from '@nomicfoundation/hardhat-ethers/signers.js';
+import { type EthosProfile } from '../../typechain-types/index.js';
 
 // ONLY USED FOR EthosReview.test.ts; new tests use deployEthos.createUser
 export async function inviteAndCreateProfile(

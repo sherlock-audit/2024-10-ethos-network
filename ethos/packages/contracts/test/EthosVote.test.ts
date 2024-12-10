@@ -1,10 +1,12 @@
-import { anyValue } from '@nomicfoundation/hardhat-chai-matchers/withArgs';
-import { type HardhatEthersSigner } from '@nomicfoundation/hardhat-ethers/signers';
-import { loadFixture, time } from '@nomicfoundation/hardhat-toolbox/network-helpers';
+import { anyValue } from '@nomicfoundation/hardhat-chai-matchers/withArgs.js';
+import { type HardhatEthersSigner } from '@nomicfoundation/hardhat-ethers/signers.js';
+import { loadFixture, time } from '@nomicfoundation/hardhat-toolbox/network-helpers.js';
 import { expect } from 'chai';
-import { ethers } from 'hardhat';
-import { type EthosReview } from '../typechain-types';
-import { smartContractNames } from './utils/mock.names';
+import hre from 'hardhat';
+import { type EthosReview } from '../typechain-types/index.js';
+import { smartContractNames } from './utils/mock.names.js';
+
+const { ethers } = hre;
 
 describe('EthosVote', () => {
   // eslint-disable-next-line @typescript-eslint/explicit-function-return-type
@@ -457,19 +459,6 @@ describe('EthosVote', () => {
       await expect(
         ethosVote.connect(VOTER_0).voteFor(TARGET_CONTRACT, TARGET_ID, IS_UPVOTE),
       ).to.be.revertedWithCustomError(ethosVote, 'EnforcedPause');
-    });
-
-    it('should fail if target contract is invalid', async () => {
-      const { VOTER_0, REVIEW_SUBJECT_0, ethosVote } = await loadFixture(deployFixture);
-
-      // no reviews created yet
-      const TARGET_CONTRACT = REVIEW_SUBJECT_0.address;
-      const TARGET_ID = 1;
-      const IS_UPVOTE = true;
-
-      await expect(ethosVote.connect(VOTER_0).voteFor(TARGET_CONTRACT, TARGET_ID, IS_UPVOTE))
-        .to.be.revertedWithCustomError(ethosVote, 'InvalidTargetContract')
-        .withArgs(TARGET_CONTRACT);
     });
 
     it('should fail if user is not ethos profile', async () => {

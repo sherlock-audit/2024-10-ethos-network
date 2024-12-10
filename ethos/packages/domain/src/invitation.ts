@@ -1,6 +1,6 @@
 import { type ProfileId } from '@ethos/blockchain-manager';
 import { type Address } from 'viem';
-import { type ScoreImpact } from './score';
+import { type ScoreImpact } from './score.js';
 
 export type Invitation = {
   id: string;

@@ -1,12 +1,13 @@
-import { loadFixture } from '@nomicfoundation/hardhat-toolbox/network-helpers';
+import { loadFixture } from '@nomicfoundation/hardhat-toolbox/network-helpers.js';
 import { expect } from 'chai';
-import { ethers } from 'hardhat';
-import { type InteractionControl, type ReputationMarket } from '../../typechain-types';
-import { createDeployer, type EthosDeployer } from '../utils/deployEthos';
-import { type EthosUser } from '../utils/ethosUser';
-import { smartContractNames } from '../utils/mock.names';
-import { DEFAULT, MarketUser } from './utils';
+import hre from 'hardhat';
+import { type InteractionControl, type ReputationMarket } from '../../typechain-types/index.js';
+import { createDeployer, type EthosDeployer } from '../utils/deployEthos.js';
+import { type EthosUser } from '../utils/ethosUser.js';
+import { smartContractNames } from '../utils/mock.names.js';
+import { DEFAULT, MarketUser } from './utils.js';
 
+const { ethers } = hre;
 describe('Reputation Market Control', () => {
   let deployer: EthosDeployer;
   let userA: MarketUser;
@@ -31,10 +32,14 @@ describe('Reputation Market Control', () => {
     reputationMarket = deployer.reputationMarket.contract;
     interactionControl = deployer.interactionControl.contract;
     DEFAULT.reputationMarket = reputationMarket;
+    DEFAULT.profileId = ethosUserA.profileId;
 
     await reputationMarket
       .connect(deployer.ADMIN)
-      .createMarket(DEFAULT.profileId, { value: DEFAULT.initialLiquidity });
+      .setUserAllowedToCreateMarket(ethosUserA.profileId, true);
+    await reputationMarket
+      .connect(ethosUserA.signer)
+      .createMarket({ value: DEFAULT.initialLiquidity });
   });
 
   describe('Pauseable', () => {
@@ -42,10 +47,9 @@ describe('Reputation Market Control', () => {
       await interactionControl
         .connect(deployer.OWNER)
         .pauseContract(smartContractNames.reputationMarket);
-      await expect(userA.buyOneVote()).to.be.revertedWithCustomError(
-        reputationMarket,
-        'EnforcedPause',
-      );
+      await expect(
+        userA.buyOneVote({ profileId: DEFAULT.profileId }),
+      ).to.be.revertedWithCustomError(reputationMarket, 'EnforcedPause');
     });
 
     it('should not allow selling votes when paused', async () => {
@@ -63,7 +67,7 @@ describe('Reputation Market Control', () => {
         .connect(deployer.OWNER)
         .pauseContract(smartContractNames.reputationMarket);
       await expect(
-        reputationMarket.createMarket(DEFAULT.profileId, { value: DEFAULT.initialLiquidity }),
+        reputationMarket.connect(userA.signer).createMarket({ value: DEFAULT.initialLiquidity }),
       ).to.be.revertedWithCustomError(reputationMarket, 'EnforcedPause');
     });
   });
@@ -82,27 +86,16 @@ describe('Reputation Market Control', () => {
       expect(isAllowed).to.equal(true);
     });
 
-    it('should revert with MarketCreationUnauthorized when profileId is for a different user', async () => {
-      await reputationMarket
-        .connect(deployer.ADMIN)
-        .setUserAllowedToCreateMarket(ethosUserA.profileId, true);
-      await expect(
-        reputationMarket
-          .connect(userA.signer)
-          .createMarket(ethosUserB.profileId, { value: DEFAULT.initialLiquidity }),
-      )
-        .to.be.revertedWithCustomError(reputationMarket, 'MarketCreationUnauthorized')
-        .withArgs(1, userA.signer.address, ethosUserB.profileId);
-    });
-
     it('should revert with ProfileNotFoundForAddress when user has no Ethos Profile', async () => {
       const nonEthosUser = await deployer.newWallet();
 
       await reputationMarket.connect(deployer.ADMIN).setAllowListEnforcement(false);
       await expect(
         reputationMarket
-          .connect(nonEthosUser)
-          .createMarket(ethosUserB.profileId, { value: ethers.parseEther('0.002') }),
+          .connect(deployer.ADMIN)
+          .createMarketWithConfigAdmin(nonEthosUser.address, 0, {
+            value: ethers.parseEther('0.002'),
+          }),
       )
         .to.be.revertedWithCustomError(deployer.ethosProfile.contract, 'ProfileNotFoundForAddress')
         .withArgs(nonEthosUser.address);
@@ -112,7 +105,7 @@ describe('Reputation Market Control', () => {
       await expect(
         reputationMarket
           .connect(ethosUserB.signer)
-          .createMarket(ethosUserB.profileId, { value: DEFAULT.initialLiquidity }),
+          .createMarket({ value: DEFAULT.initialLiquidity }),
       )
         .to.be.revertedWithCustomError(reputationMarket, 'MarketCreationUnauthorized')
         .withArgs(0, ethosUserB.signer.address, ethosUserB.profileId);
@@ -122,7 +115,7 @@ describe('Reputation Market Control', () => {
       await reputationMarket.connect(deployer.ADMIN).setAllowListEnforcement(false);
       await reputationMarket
         .connect(ethosUserB.signer)
-        .createMarket(ethosUserB.profileId, { value: DEFAULT.initialLiquidity });
+        .createMarket({ value: DEFAULT.initialLiquidity });
 
       const market = await reputationMarket.getMarket(ethosUserB.profileId);
 
@@ -137,7 +130,7 @@ describe('Reputation Market Control', () => {
         .setUserAllowedToCreateMarket(ethosUserB.profileId, true);
       await reputationMarket
         .connect(ethosUserB.signer)
-        .createMarket(ethosUserB.profileId, { value: DEFAULT.initialLiquidity });
+        .createMarket({ value: DEFAULT.initialLiquidity });
 
       const market = await reputationMarket.getMarket(ethosUserB.profileId);
 
@@ -156,7 +149,7 @@ describe('Reputation Market Control', () => {
       await expect(
         reputationMarket
           .connect(ethosUserB.signer)
-          .createMarket(ethosUserB.profileId, { value: DEFAULT.initialLiquidity }),
+          .createMarket({ value: DEFAULT.initialLiquidity }),
       )
         .to.be.revertedWithCustomError(reputationMarket, 'MarketCreationUnauthorized')
         .withArgs(0, ethosUserB.signer.address, ethosUserB.profileId);

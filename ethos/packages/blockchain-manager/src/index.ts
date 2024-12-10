@@ -1,4 +1,4 @@
-export { BlockchainManager } from './BlockchainManager';
+export { BlockchainManager } from './BlockchainManager.js';
 
 export type {
   Attestation,
@@ -19,13 +19,15 @@ export type {
   VouchFunds,
   Vote,
   Fees,
-} from './types';
-export { getScoreValue } from './types';
+} from './types.js';
+export { getScoreValue } from './types.js';
 
 export type {
   InsufficientFundsError,
   InsufficientVotesOwnedError,
-} from './contracts/ReputationMarket';
-export { NegativeReview, NeutralReview, PositiveReview, Score, ScoreByValue } from './types';
-export { ESCROW_TOKEN_ADDRESS, WETH9_MAINNET, WETH9_TESTNET } from './contracts/constants';
-export { isAlchemyRateLimitError } from './providers';
+  ReputationMarketError,
+  SlippageLimitExceededError,
+} from './contracts/ReputationMarket.js';
+
+export { NegativeReview, NeutralReview, PositiveReview, Score, ScoreByValue } from './types.js';
+export { isAlchemyRateLimitError } from './providers.js';

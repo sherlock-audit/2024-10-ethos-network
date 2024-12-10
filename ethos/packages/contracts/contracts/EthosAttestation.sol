@@ -57,17 +57,32 @@ import { AttestationDetails } from "./utils/Structs.sol";
  * ensuring that only authorized parties can perform upgrades.
  */
 contract EthosAttestation is IEthosAttestation, AccessControl, UUPSUpgradeable {
+  /**
+   * @dev Constructor that disables initializers when the implementation contract is deployed.
+   * This prevents the implementation contract from being initialized, which is important for
+   * security since the implementation contract should never be used directly, only through
+   * delegatecall from the proxy.
+   */
+  constructor() {
+    _disableInitializers();
+  }
+
   // Tracks the total number of attestations created
   uint256 public attestationCount;
 
   // Stores attestation information, where the key is the attestation ID, and the value is the Attestation struct
   mapping(uint256 => Attestation) public attestationById;
-  // Maps the hash of service and account to the Attestation struct, allowing quick lookups
-  mapping(bytes32 => Attestation) public attestationByHash;
+  // Maps the hash of service and account to the Attestation id, allowing quick lookups
+  mapping(bytes32 => uint256) public attestationIdByHash;
   // Stores all attestation hashes associated with a specific profile ID
   mapping(uint256 => bytes32[]) public attestationHashesByProfileId;
   // A nested mapping that stores the index of an attestation hash in the attestationHashesByProfileId array for efficient lookups and removals
   mapping(uint256 => mapping(bytes32 => uint256)) private hashIndexByProfileIdAndHash;
+
+  // Add storage gap as the last storage variable
+  // This allows us to add new storage variables in future upgrades
+  // by reducing the size of this gap
+  uint256[50] private __gap;
 
   /**
    * @dev Emitted when a new attestation is successfully created
@@ -236,7 +251,7 @@ contract EthosAttestation is IEthosAttestation, AccessControl, UUPSUpgradeable {
       attestationHashesByProfileId[profileId].length -
       1;
 
-    attestationByHash[hashStr] = Attestation({
+    attestationById[attestationCount] = Attestation({
       archived: false,
       attestationId: attestationCount,
       createdAt: block.timestamp,
@@ -244,7 +259,7 @@ contract EthosAttestation is IEthosAttestation, AccessControl, UUPSUpgradeable {
       account: attestationDetails.account,
       service: attestationDetails.service
     });
-    attestationById[attestationCount] = attestationByHash[hashStr];
+    attestationIdByHash[hashStr] = attestationCount;
 
     // keep the profile contract up to date re: registered attestations
     IEthosProfile(ethosProfile).assignExistingProfileToAttestation(hashStr, profileId);
@@ -275,7 +290,7 @@ contract EthosAttestation is IEthosAttestation, AccessControl, UUPSUpgradeable {
       return false;
     }
 
-    Attestation memory attestation = attestationByHash[attestationHash];
+    Attestation memory attestation = attestationById[attestationIdByHash[attestationHash]];
 
     if (attestation.profileId == profileId) {
       return false;
@@ -283,11 +298,14 @@ contract EthosAttestation is IEthosAttestation, AccessControl, UUPSUpgradeable {
 
     address ethosProfile = _getEthosProfile();
 
-    (bool profileExists, ) = ITargetStatus(ethosProfile).targetExistsAndAllowedForId(profileId);
+    (bool profileExists, bool isArchived, bool isMock) = IEthosProfile(ethosProfile)
+      .profileStatusById(profileId);
 
-    if (!profileExists) {
+    // only allow valid, non-archived, non-mock profiles to claim attestations
+    if (!profileExists || isArchived || isMock) {
       revert ProfileNotFound(profileId);
     }
+
     bool senderBelongsToProfile = IEthosProfile(ethosProfile).addressBelongsToProfile(
       msg.sender,
       profileId
@@ -301,7 +319,7 @@ contract EthosAttestation is IEthosAttestation, AccessControl, UUPSUpgradeable {
     _removeAttestationFromPreviousProfile(attestation.profileId, attestationHash);
 
     // Set new profileId for attestation
-    attestationByHash[attestationHash].profileId = profileId;
+    attestationById[attestationIdByHash[attestationHash]].profileId = profileId;
     attestationHashesByProfileId[profileId].push(attestationHash);
     // Update the index of the hash in the new profile
     hashIndexByProfileIdAndHash[profileId][attestationHash] =
@@ -309,17 +327,17 @@ contract EthosAttestation is IEthosAttestation, AccessControl, UUPSUpgradeable {
       1;
 
     // Restore attestation if it was previously archived
-    if (attestationByHash[attestationHash].archived) {
-      attestationByHash[attestationHash].archived = false;
+    if (attestationById[attestationIdByHash[attestationHash]].archived) {
+      attestationById[attestationIdByHash[attestationHash]].archived = false;
     }
 
     // Keep the profile contract up to date re: registered attestations
     IEthosProfile(ethosProfile).assignExistingProfileToAttestation(attestationHash, profileId);
 
     emit AttestationClaimed(
-      attestationByHash[attestationHash].attestationId,
-      attestationByHash[attestationHash].service,
-      attestationByHash[attestationHash].account,
+      attestationById[attestationIdByHash[attestationHash]].attestationId,
+      attestationById[attestationIdByHash[attestationHash]].service,
+      attestationById[attestationIdByHash[attestationHash]].account,
       evidence,
       profileId
     );
@@ -333,22 +351,26 @@ contract EthosAttestation is IEthosAttestation, AccessControl, UUPSUpgradeable {
    */
   function archiveAttestation(bytes32 attestationHash) external whenNotPaused {
     // ensure attestation exists
-    Attestation storage attestation = attestationByHash[attestationHash];
+    Attestation storage attestation = attestationById[attestationIdByHash[attestationHash]];
     if (attestation.createdAt == 0) {
       revert AttestationNotFound(attestationHash);
     }
     // ensure attestation belongs to sender
-    uint256 profileId = attestationByHash[attestationHash].profileId;
-    bool senderBelongsToProfile = IEthosProfile(_getEthosProfile()).addressBelongsToProfile(
-      msg.sender,
-      profileId
-    );
+    uint256 profileId = attestation.profileId;
+    IEthosProfile ethosProfile = IEthosProfile(_getEthosProfile());
+    bool senderBelongsToProfile = ethosProfile.addressBelongsToProfile(msg.sender, profileId);
 
     if (!senderBelongsToProfile) {
       revert AddressNotInProfile(msg.sender, profileId);
     }
 
-    attestationByHash[attestationHash].archived = true;
+    // ensure profile is not archived or mock
+    (, bool isArchived, bool isMock) = ethosProfile.profileStatusById(profileId);
+    if (isArchived || isMock) {
+      revert ProfileNotFound(profileId);
+    }
+
+    attestationById[attestationIdByHash[attestationHash]].archived = true;
 
     emit AttestationArchived(
       profileId,
@@ -363,7 +385,7 @@ contract EthosAttestation is IEthosAttestation, AccessControl, UUPSUpgradeable {
    * @param attestationHash Hash of the attestation.
    */
   function restoreAttestation(bytes32 attestationHash) public whenNotPaused {
-    uint256 profileId = attestationByHash[attestationHash].profileId;
+    uint256 profileId = attestationById[attestationIdByHash[attestationHash]].profileId;
 
     address ethosProfile = _getEthosProfile();
 
@@ -382,16 +404,16 @@ contract EthosAttestation is IEthosAttestation, AccessControl, UUPSUpgradeable {
       revert AddressNotInProfile(msg.sender, profileId);
     }
 
-    if (!attestationByHash[attestationHash].archived) {
+    if (!attestationById[attestationIdByHash[attestationHash]].archived) {
       revert AttestationNotArchived(attestationHash);
     }
 
-    attestationByHash[attestationHash].archived = false;
+    attestationById[attestationIdByHash[attestationHash]].archived = false;
 
     emit AttestationRestored(
-      attestationByHash[attestationHash].attestationId,
-      attestationByHash[attestationHash].service,
-      attestationByHash[attestationHash].account,
+      attestationById[attestationIdByHash[attestationHash]].attestationId,
+      attestationById[attestationIdByHash[attestationHash]].service,
+      attestationById[attestationIdByHash[attestationHash]].account,
       profileId
     );
   }
@@ -402,7 +424,7 @@ contract EthosAttestation is IEthosAttestation, AccessControl, UUPSUpgradeable {
    * @return Whether the attestation was restored.
    */
   function restoreIfArchived(bytes32 attestationHash) private returns (bool) {
-    if (attestationByHash[attestationHash].archived) {
+    if (attestationById[attestationIdByHash[attestationHash]].archived) {
       restoreAttestation(attestationHash);
       return true;
     } else {
@@ -416,7 +438,7 @@ contract EthosAttestation is IEthosAttestation, AccessControl, UUPSUpgradeable {
    * @return Whether the attestation exists.
    */
   function attestationExistsForHash(bytes32 attestationHash) public view returns (bool) {
-    return attestationByHash[attestationHash].createdAt > 0;
+    return attestationById[attestationIdByHash[attestationHash]].createdAt > 0;
   }
 
   /**
@@ -432,7 +454,7 @@ contract EthosAttestation is IEthosAttestation, AccessControl, UUPSUpgradeable {
     if (bytes(service).length == 0 || bytes(account).length == 0) {
       revert AttestationInvalid(service, account);
     }
-    return keccak256(abi.encodePacked(service, account));
+    return keccak256(abi.encode(service, account));
   }
 
   /**
@@ -454,7 +476,7 @@ contract EthosAttestation is IEthosAttestation, AccessControl, UUPSUpgradeable {
   function getAttestationByHash(
     bytes32 _hash
   ) external view returns (Attestation memory attestation) {
-    attestation = attestationByHash[_hash];
+    attestation = attestationById[attestationIdByHash[_hash]];
   }
 
   /**
@@ -525,7 +547,7 @@ contract EthosAttestation is IEthosAttestation, AccessControl, UUPSUpgradeable {
     string calldata service,
     string calldata evidence
   ) private pure returns (bytes32) {
-    return keccak256(abi.encodePacked(profileId, randValue, account, service, evidence));
+    return keccak256(abi.encode(profileId, randValue, account, service, evidence));
   }
 
   // ITargetStatus implementation
@@ -542,5 +564,14 @@ contract EthosAttestation is IEthosAttestation, AccessControl, UUPSUpgradeable {
 
     exist = attestation.createdAt > 0;
     allowed = exist;
+  }
+
+  /**
+   * @dev Gets the Attestation struct for a given attestation hash
+   * @param attestationHash The hash of the service and account to look up
+   * @return The Attestation struct containing the attestation details
+   */
+  function attestationByHash(bytes32 attestationHash) external view returns (Attestation memory) {
+    return attestationById[attestationIdByHash[attestationHash]];
   }
 }
