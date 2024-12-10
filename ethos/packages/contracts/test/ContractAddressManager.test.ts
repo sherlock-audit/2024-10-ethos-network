@@ -1,7 +1,9 @@
-import { loadFixture } from '@nomicfoundation/hardhat-toolbox/network-helpers';
+import { loadFixture } from '@nomicfoundation/hardhat-toolbox/network-helpers.js';
 import { expect } from 'chai';
-import { ethers } from 'hardhat';
-import { smartContractNames } from './utils/mock.names';
+import hre from 'hardhat';
+import { smartContractNames } from './utils/mock.names.js';
+
+const { ethers } = hre;
 
 describe('ContractAddressManager', () => {
   // eslint-disable-next-line @typescript-eslint/explicit-function-return-type

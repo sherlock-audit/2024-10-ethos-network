@@ -11,7 +11,7 @@ This repository is a monorepo. It consists of two main directories:
 
 #### Node.js
 
-You need to have Node.js v20 installed. If you use
+You need to have Node.js v22 installed. If you use
 [nvm](https://github.com/nvm-sh/nvm#installing-and-updating), you can run this
 commands in the root:
 
@@ -33,7 +33,10 @@ Install [Docker](https://www.docker.com/products/docker-desktop/) or [OrbStack](
 Copy `services/echo/.env.sample` file into `services/echo/.env` and fill in some values.
 
 `ALCHEMY_API_KEY` - you can create a new Alchemy account and grab the API key, or copy one shared via 1password (*if you set up a new Alchemy account, make sure to enable the Ethereum Mainnet and Base networks.*) \
-`MORALIS_API_KEY` - you can either create a new Moralis account or copy one shared via 1Password. \
+`MORALIS_API_KEY` - you can either create a new Moralis account or copy one
+shared via 1Password. \
+`FIREBASE_ADMIN_CREDENTIALS` - copy the value from 1Password shared under
+**Firebase (dev)** name.
 `SIGNER_ACCOUNT_PRIVATE_KEY` - copy it from 1Password shared under **Testnet wallets** name. \
 `STATSIG_SECRET_KEY` - copy it from 1Password shared under **STATSIG_SECRET_KEY** name. \
 `TWITTER_BEARER_TOKEN` - copy **Bearer Token** from 1Password shared under **Twitter Developer API Key** name.

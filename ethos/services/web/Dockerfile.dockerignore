@@ -1,0 +1,17 @@
+.git
+.github
+.husky
+.vitest
+.vscode
+scripts
+standalone
+test-reports
+
+**/.next
+
+# Ignore all services except web and echo (for API types)
+services/*
+!services/echo
+!services/web
+
+services/web/fly.*.toml

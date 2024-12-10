@@ -1,7 +1,7 @@
 import * as amplitude from '@amplitude/analytics-browser';
 import { type BrowserOptions } from '@amplitude/analytics-types';
 import { sessionReplayPlugin } from '@amplitude/plugin-session-replay-browser';
-import { type Attributes } from './analytics.type';
+import { type Attributes } from './analytics.type.js';
 
 type SessionReplayOptions = Parameters<typeof sessionReplayPlugin>[0];
 

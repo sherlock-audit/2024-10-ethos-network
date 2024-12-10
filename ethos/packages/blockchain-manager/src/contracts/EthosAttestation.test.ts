@@ -1,6 +1,6 @@
 import { getContractsForEnvironment } from '@ethos/contracts';
-import { EthosAttestation } from './EthosAttestation';
-import { getContractRunner } from './utils';
+import { EthosAttestation } from './EthosAttestation.js';
+import { getContractRunner } from './utils.js';
 
 describe('hash', () => {
   it('should return the same hash as the blockchain manager getServiceAndAccountHash function', () => {

@@ -1,0 +1,27 @@
+{
+  "name": "@ethos/common-ui",
+  "version": "1.0.0",
+  "description": "A library package of common web components and utilities",
+  "main": "dist/index.js",
+  "type": "module",
+  "author": "Ethos Network Inc.",
+  "license": "UNLICENSED",
+  "scripts": {
+    "build": "tsc -b",
+    "watch": "tsc -w"
+  },
+  "peerDependencies": {
+    "@ant-design/icons": "^5.5.2",
+    "antd": "^5.22.3",
+    "react": "^18.3.1",
+    "react-dom": "^18.3.1"
+  },
+  "devDependencies": {
+    "@ant-design/icons": "^5.5.2",
+    "@types/react": "^18.3.12",
+    "@types/react-dom": "^18.3.1",
+    "antd": "^5.22.3",
+    "react": "^18.3.1",
+    "react-dom": "^18.3.1"
+  }
+}

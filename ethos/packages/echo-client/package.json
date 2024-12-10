@@ -2,21 +2,15 @@
   "name": "@ethos/echo-client",
   "version": "1.0.0",
   "description": "A client package for using echo APIs",
-  "main": "dist/index.js",
-  "module": "dist/index.mjs",
-  "exports": {
-    ".": {
-      "types": "./dist/index.d.ts",
-      "import": "./dist/index.mjs",
-      "require": "./dist/index.js"
-    }
-  },
-  "types": "dist/index.d.ts",
+  "main": "dist/packages/echo-client/src/index.js",
+  "types": "dist/packages/echo-client/src/index.d.ts",
   "author": "Ethos Network Inc.",
   "license": "UNLICENSED",
+  "type": "module",
   "scripts": {
-    "build": "tsup --config ../tsup.config.ts",
-    "watch": "tsup --config ../tsup.config.ts --clean false --watch"
+    "prebuild": "cd ../../services/echo && npm run prebuild",
+    "build": "tsc -b",
+    "watch": "tsc -w"
   },
   "dependencies": {
     "@ethos/domain": "^1.0.0",
@@ -25,6 +19,6 @@
   },
   "devDependencies": {
     "@types/lodash-es": "^4.17.12",
-    "viem": "^2.21.35"
+    "viem": "^2.21.51"
   }
 }

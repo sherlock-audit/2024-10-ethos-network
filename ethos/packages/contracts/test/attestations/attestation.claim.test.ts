@@ -1,10 +1,10 @@
-import { type HardhatEthersSigner } from '@nomicfoundation/hardhat-ethers/signers';
-import { loadFixture } from '@nomicfoundation/hardhat-toolbox/network-helpers';
+import { type HardhatEthersSigner } from '@nomicfoundation/hardhat-ethers/signers.js';
+import { loadFixture } from '@nomicfoundation/hardhat-toolbox/network-helpers.js';
 import { expect } from 'chai';
-import { type EthosProfile, type EthosAttestation } from '../../typechain-types';
-import { common } from '../utils/common';
-import { createDeployer, type EthosDeployer } from '../utils/deployEthos';
-import { type EthosUser } from '../utils/ethosUser';
+import { type EthosProfile, type EthosAttestation } from '../../typechain-types/index.js';
+import { common } from '../utils/common.js';
+import { createDeployer, type EthosDeployer } from '../utils/deployEthos.js';
+import { type EthosUser } from '../utils/ethosUser.js';
 
 function generateRandomValue(): string {
   return String(Date.now());
@@ -458,5 +458,65 @@ describe('EthosAttestation Claim Attestation', () => {
         .to.revertedWithCustomError(ethosAttestation, 'AttestationNotFound')
         .withArgs(attestationHashC);
     });
+  });
+
+  it('should revert when archived profile attempts to claim attestation', async () => {
+    // Create initial attestation with userA
+    const [signatureA, randomValueA] = await getSignature(
+      String(userA.profileId),
+      ATTESTATION_EVIDENCE_0,
+      EXPECTED_SIGNER,
+      SERVICE_X,
+      ACCOUNT_NAME,
+    );
+
+    await ethosAttestation
+      .connect(userA.signer)
+      .createAttestation(
+        String(userA.profileId),
+        randomValueA,
+        { account: ACCOUNT_NAME, service: SERVICE_X },
+        ATTESTATION_EVIDENCE_0,
+        signatureA,
+      );
+
+    // Archive userB's profile using EthosUser method
+    await userB.archiveProfile();
+
+    // Attempt to claim attestation with archived profile
+    const [signatureB, randomValueB] = await getSignature(
+      String(userB.profileId),
+      ATTESTATION_EVIDENCE_0,
+      EXPECTED_SIGNER,
+      SERVICE_X,
+      ACCOUNT_NAME,
+    );
+
+    await expect(
+      ethosAttestation
+        .connect(userB.signer)
+        .createAttestation(
+          String(userB.profileId),
+          randomValueB,
+          { account: ACCOUNT_NAME, service: SERVICE_X },
+          ATTESTATION_EVIDENCE_0,
+          signatureB,
+        ),
+    )
+      .to.be.revertedWithCustomError(ethosAttestation, 'ProfileNotFound')
+      .withArgs(String(userB.profileId));
+  });
+
+  it('should revert when archived profile attempts to archive attestation', async () => {
+    // Create initial attestation with userA
+    const attestationHash = await createFirstAttestation();
+
+    // Archive userA's profile
+    await userA.archiveProfile();
+
+    // Attempt to archive attestation with archived profile
+    await expect(ethosAttestation.connect(userA.signer).archiveAttestation(attestationHash))
+      .to.be.revertedWithCustomError(ethosAttestation, 'ProfileNotFound')
+      .withArgs(String(userA.profileId));
   });
 });

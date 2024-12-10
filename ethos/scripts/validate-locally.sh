@@ -17,9 +17,9 @@ echo -e "\n✅ Code is compliant with the linting rules."
 npm run typecheck
 echo "✅ Typecheck passed."
 
-# Run Jest tests
+# Run Vitest tests
 npm run test:ci
-echo -e "\n✅ Jest tests passed.\n"
+echo -e "\n✅ Vitest tests passed.\n"
 
 # Run contract tests if there are changes in the contracts directory
 BRANCH="main"

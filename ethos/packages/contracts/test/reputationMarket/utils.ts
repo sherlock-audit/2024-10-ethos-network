@@ -1,13 +1,16 @@
-import { type HardhatEthersSigner } from '@nomicfoundation/hardhat-ethers/signers';
+import { type HardhatEthersSigner } from '@nomicfoundation/hardhat-ethers/signers.js';
 import { type ContractTransactionResponse, type Log, type EventLog } from 'ethers';
-import { ethers } from 'hardhat';
-import { type ReputationMarket } from '../../typechain-types';
+import hre from 'hardhat';
+
+import { type ReputationMarket } from '../../typechain-types/index.js';
+
+const { ethers } = hre;
 
 export const DEFAULT = {
   reputationMarket: undefined as unknown as ReputationMarket,
-  profileId: 1,
+  profileId: 1n,
   initialLiquidity: ethers.parseEther('1.0'),
-  buyAmount: ethers.parseEther('0.001'),
+  buyAmount: ethers.parseEther('0.01'),
   slippageBasisPoints: 100, // 100 basis points = 1%
   value: { value: ethers.parseEther('0.001') },
   isPositive: true,
@@ -16,7 +19,7 @@ export const DEFAULT = {
 
 type Params = {
   reputationMarket: ReputationMarket;
-  profileId: number;
+  profileId: bigint;
   isPositive: boolean;
   buyAmount: bigint;
   sellVotes: bigint;
@@ -75,6 +78,15 @@ function isVotesSoldEvent(reputationMarket: ReputationMarket) {
   };
 }
 
+function isWithdrawDonationsEvent(reputationMarket: ReputationMarket) {
+  return function (log: Log): log is EventLog {
+    return (
+      isEventLog(log) &&
+      log.topics[0] === reputationMarket.interface.getEvent('DonationWithdrawn')?.topicHash
+    );
+  };
+}
+
 export class MarketUser {
   public readonly signer: HardhatEthersSigner;
   constructor(signer: HardhatEthersSigner) {
@@ -107,13 +119,31 @@ export class MarketUser {
     simulatedVotesBought: bigint;
     simulatedFundsPaid: bigint;
     simulatedNewVotePrice: bigint;
+    simulatedProtocolFee: bigint;
+    simulatedDonation: bigint;
+    simulatedMinVotePrice: bigint;
+    simulatedMaxVotePrice: bigint;
   }> {
     const { reputationMarket, profileId, isPositive, buyAmount } = getParams(params);
-    const [simulatedVotesBought, simulatedFundsPaid, simulatedNewVotePrice] = await reputationMarket
-      .connect(this.signer)
-      .simulateBuy(profileId, isPositive, buyAmount);
+    const [
+      simulatedVotesBought,
+      simulatedFundsPaid,
+      simulatedNewVotePrice,
+      simulatedProtocolFee,
+      simulatedDonation,
+      simulatedMinVotePrice,
+      simulatedMaxVotePrice,
+    ] = await reputationMarket.connect(this.signer).simulateBuy(profileId, isPositive, buyAmount);
 
-    return { simulatedVotesBought, simulatedFundsPaid, simulatedNewVotePrice };
+    return {
+      simulatedVotesBought,
+      simulatedFundsPaid,
+      simulatedNewVotePrice,
+      simulatedProtocolFee,
+      simulatedDonation,
+      simulatedMinVotePrice,
+      simulatedMaxVotePrice,
+    };
   }
 
   async buyVotes(params?: Partial<Params>): Promise<Result> {
@@ -128,10 +158,9 @@ export class MarketUser {
 
     let expectedVoteCount = expectedVotes;
 
-    if (!expectedVoteCount) {
-      const { simulatedVotesBought } = await this.simulateBuy(params);
-      expectedVoteCount = simulatedVotesBought;
-    }
+    const { simulatedVotesBought } = await this.simulateBuy(params);
+    expectedVoteCount = expectedVoteCount ?? simulatedVotesBought;
+
     const tx: ContractTransactionResponse = await reputationMarket
       .connect(this.signer)
       .buyVotes(profileId, isPositive, expectedVoteCount, slippageBasisPoints, {
@@ -150,12 +179,28 @@ export class MarketUser {
     simulatedVotesSold: bigint;
     simulatedFundsReceived: bigint;
     simulatedNewVotePrice: bigint;
+    simulatedProtocolFee: bigint;
+    simulatedMinVotePrice: bigint;
+    simulatedMaxVotePrice: bigint;
   }> {
     const { reputationMarket, profileId, isPositive, sellVotes } = getParams(params);
-    const [simulatedVotesSold, simulatedFundsReceived, simulatedNewVotePrice] =
-      await reputationMarket.connect(this.signer).simulateSell(profileId, isPositive, sellVotes);
+    const [
+      simulatedVotesSold,
+      simulatedFundsReceived,
+      simulatedNewVotePrice,
+      simulatedProtocolFee,
+      simulatedMinVotePrice,
+      simulatedMaxVotePrice,
+    ] = await reputationMarket.connect(this.signer).simulateSell(profileId, isPositive, sellVotes);
 
-    return { simulatedVotesSold, simulatedFundsReceived, simulatedNewVotePrice };
+    return {
+      simulatedVotesSold,
+      simulatedFundsReceived,
+      simulatedNewVotePrice,
+      simulatedProtocolFee,
+      simulatedMinVotePrice,
+      simulatedMaxVotePrice,
+    };
   }
 
   async sellVotes(params?: Partial<Params>): Promise<Result> {
@@ -183,5 +228,15 @@ export class MarketUser {
     const updatedParams = getParams({ ...params, sellVotes: 1n });
 
     return await this.sellVotes(updatedParams);
+  }
+
+  async withdrawDonations(): Promise<{ donationsWithdrawn: bigint }> {
+    const { reputationMarket } = getParams();
+    const tx = await reputationMarket.connect(this.signer).withdrawDonations();
+    const receipt = await tx.wait();
+    const event = receipt?.logs.find(isWithdrawDonationsEvent(reputationMarket));
+    const donationsWithdrawn = event ? event.args.amount : 0n;
+
+    return { donationsWithdrawn };
   }
 }

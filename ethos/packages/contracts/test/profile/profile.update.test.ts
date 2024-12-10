@@ -1,9 +1,10 @@
-import { type HardhatEthersSigner } from '@nomicfoundation/hardhat-ethers/signers';
-import { loadFixture } from '@nomicfoundation/hardhat-toolbox/network-helpers';
+import { type HardhatEthersSigner } from '@nomicfoundation/hardhat-ethers/signers.js';
+import { loadFixture } from '@nomicfoundation/hardhat-toolbox/network-helpers.js';
 import { expect } from 'chai';
-import { type EthosProfile } from '../../typechain-types';
-import { createDeployer, type EthosDeployer } from '../utils/deployEthos';
-import { type EthosUser } from '../utils/ethosUser';
+import { type EthosProfile } from '../../typechain-types/index.js';
+import { common } from '../utils/common.js';
+import { createDeployer, type EthosDeployer } from '../utils/deployEthos.js';
+import { type EthosUser } from '../utils/ethosUser.js';
 
 describe('Updating Ethos Profiles', () => {
   let deployer: EthosDeployer;
@@ -21,17 +22,30 @@ describe('Updating Ethos Profiles', () => {
     userA = await deployer.createUser();
     invitee1 = await deployer.newWallet();
   });
-  // eslint-disable-next-line jest/no-disabled-tests, jest/expect-expect
-  it.skip('should not register address for mock profile', async () => {
-    const randomAddr = '0x6ba07df6c6534a719175d28881226721c47d49a3';
+
+  it('should not allow a mock profile to register an address', async () => {
+    const randValue = Math.floor(Math.random() * 1000000);
+
     await userA.review({ address: invitee1.address });
-    // TODO VALIDATE AND SIGN REGISTRATION
-    await ethosProfile.connect(invitee1).registerAddress(randomAddr, 1, 0, '');
+
+    const signature = await common.signatureForRegisterAddress(
+      invitee1.address,
+      userA.profileId.toString(),
+      randValue.toString(),
+      deployer.EXPECTED_SIGNER,
+    );
+
+    await expect(
+      ethosProfile
+        .connect(invitee1)
+        .registerAddress(invitee1.address, userA.profileId, randValue, signature),
+    ).to.be.revertedWithCustomError(ethosProfile, 'ProfileNotFoundForAddress');
   });
+
   it('should not delete address from mock profile', async () => {
     await userA.review({ address: invitee1.address });
     await expect(
-      ethosProfile.connect(invitee1).deleteAddressAtIndex(0),
+      ethosProfile.connect(invitee1).deleteAddressAtIndex(0, false),
     ).to.be.revertedWithCustomError(ethosProfile, 'ProfileNotFoundForAddress');
   });
   it('should not archive profile for mock profile', async () => {

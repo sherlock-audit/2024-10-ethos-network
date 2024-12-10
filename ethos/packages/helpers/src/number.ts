@@ -56,3 +56,31 @@ export function toNumber(value: string | number | unknown, fallbackValue = 0): n
 
   return isNaN(numValue) ? fallbackValue : numValue;
 }
+
+/* This is meant to be used to simplify Contributor XP scores.
+it does not scale past 10 million, but should be fine for now. In the future
+if we need to add more tiers we can come back and do that later.
+The intent here is to show 4 digits + 1 suffix character (k, M)
+*/
+export function formatXPScore(value: number): string {
+  if (value < 10_000) {
+    return value.toString();
+  }
+
+  const formatter = new Intl.NumberFormat('en', {
+    notation: 'compact',
+    maximumFractionDigits:
+      value >= 10_000_000
+        ? 1 // 10M+: XX.XM
+        : value >= 1_000_000
+          ? 2 // 1M-9.99M: X.XXM
+          : value >= 100_000
+            ? 0 // 100k-999k: XXXk
+            : value >= 10_000
+              ? 1 // 10k-99.9k: XX.Xk
+              : 2, // fallback
+    minimumFractionDigits: 0,
+  });
+
+  return formatter.format(value).toLowerCase();
+}

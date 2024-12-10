@@ -1,7 +1,7 @@
 import { type ContractLookup, TypeChain } from '@ethos/contracts';
 import { type ContractRunner, type ContractTransactionResponse, id, toNumber } from 'ethers';
 import { type Address } from 'viem';
-import { type Attestation, type AttestationService } from '../types';
+import { type Attestation, type AttestationService } from '../types.js';
 
 export class EthosAttestation {
   public readonly address: Address;

@@ -1,10 +1,8 @@
-import { type HardhatEthersSigner } from '@nomicfoundation/hardhat-ethers/signers';
+import { type HardhatEthersSigner } from '@nomicfoundation/hardhat-ethers/signers.js';
 import { type ContractFactory, type BaseContract } from 'ethers';
-import { ethers } from 'hardhat';
+import hre from 'hardhat';
+
 import {
-  type EthosSlashPenalty,
-  type EthosVaultManager,
-  type WETH9,
   type ContractAddressManager,
   type ERC1967Proxy,
   type EthosAttestation,
@@ -16,12 +14,12 @@ import {
   type PaymentToken,
   type RejectETHReceiver,
   type SignatureVerifier,
-  type EthosEscrow,
-  type EthosVaultFactory,
   type ReputationMarket,
-} from '../../typechain-types';
-import { EthosUser } from './ethosUser';
-import { smartContractNames } from './mock.names';
+} from '../../typechain-types/index.js';
+import { EthosUser } from './ethosUser.js';
+import { smartContractNames } from './mock.names.js';
+
+const { ethers } = hre;
 
 type Deployable<T> = {
   contract: T;
@@ -50,7 +48,6 @@ export class EthosDeployer {
   public RANDOM_ACC!: HardhatEthersSigner;
 
   public readonly ERC1967Proxy!: Factory<ERC1967Proxy>;
-  public readonly weth9!: Deployable<WETH9>;
   public readonly contractAddressManager!: Deployable<ContractAddressManager>;
   public readonly signatureVerifier!: Deployable<SignatureVerifier>;
   public readonly interactionControl!: Deployable<InteractionControl>;
@@ -59,10 +56,6 @@ export class EthosDeployer {
   public readonly ethosReview!: Proxied<EthosReview>;
   public readonly ethosVote!: Proxied<EthosVote>;
   public readonly ethosVouch!: Proxied<EthosVouch>;
-  public readonly ethosEscrow!: Deployable<EthosEscrow>;
-  public readonly ethosSlashPenalty!: Proxied<EthosSlashPenalty>;
-  public readonly ethosVaultManager!: Proxied<EthosVaultManager>;
-  public readonly ethosVaultFactory!: Deployable<EthosVaultFactory>;
   public readonly rejectETHReceiver!: Deployable<RejectETHReceiver>;
   public readonly paymentTokens: Array<Deployable<PaymentToken>> = [];
   public readonly reputationMarket!: Proxied<ReputationMarket>;
@@ -73,8 +66,6 @@ export class EthosDeployer {
     // -- would never do this in non-test code
     // eslint-disable-next-line @typescript-eslint/consistent-type-assertions
     this.ERC1967Proxy = {} as Factory<ERC1967Proxy>;
-    // eslint-disable-next-line @typescript-eslint/consistent-type-assertions
-    this.weth9 = {} as Deployable<WETH9>;
     // eslint-disable-next-line @typescript-eslint/consistent-type-assertions
     this.contractAddressManager = {} as Deployable<ContractAddressManager>;
     // eslint-disable-next-line @typescript-eslint/consistent-type-assertions
@@ -91,14 +82,6 @@ export class EthosDeployer {
     this.ethosVote = {} as Proxied<EthosVote>;
     // eslint-disable-next-line @typescript-eslint/consistent-type-assertions
     this.ethosVouch = {} as Proxied<EthosVouch>;
-    // eslint-disable-next-line @typescript-eslint/consistent-type-assertions
-    this.ethosEscrow = {} as Deployable<EthosEscrow>;
-    // eslint-disable-next-line @typescript-eslint/consistent-type-assertions
-    this.ethosSlashPenalty = {} as Proxied<EthosSlashPenalty>;
-    // eslint-disable-next-line @typescript-eslint/consistent-type-assertions
-    this.ethosVaultManager = {} as Proxied<EthosVaultManager>;
-    // eslint-disable-next-line @typescript-eslint/consistent-type-assertions
-    this.ethosVaultFactory = {} as Deployable<EthosVaultFactory>;
     // eslint-disable-next-line @typescript-eslint/consistent-type-assertions
     this.rejectETHReceiver = {} as Deployable<RejectETHReceiver>;
     // eslint-disable-next-line @typescript-eslint/consistent-type-assertions
@@ -124,14 +107,9 @@ export class EthosDeployer {
       this.deploySignatureVerifier(),
       this.deployRejectETHReceiver(),
       this.deployPaymentToken(),
-      this.deployWETH(),
     ]);
     // depends on contractAddressManager
-    await Promise.all([
-      this.deployInteractionControl(),
-      this.deployEthosEscrow(),
-      this.deployEthosVaultFactory(),
-    ]);
+    await this.deployInteractionControl();
     // depends on signatureVerifier, contractAddressManager
     await Promise.all([
       this.deployEthosAttestation(),
@@ -139,8 +117,6 @@ export class EthosDeployer {
       this.deployEthosReview(),
       this.deployEthosVote(),
       this.deployEthosVouch(),
-      this.deployEthosSlashPenalty(),
-      this.deployEthosVaultManager(),
       this.deployReputationMarket(),
     ]);
     // requires all other contracts to be deployed
@@ -155,15 +131,6 @@ export class EthosDeployer {
    */
   async deployProxy(): Promise<void> {
     this.ERC1967Proxy.factory = await ethers.getContractFactory('ERC1967Proxy');
-  }
-
-  /**
-   * Deploys the Wrapped ETH contract.
-   * (no dependencies on other contracts)
-   */
-  async deployWETH(): Promise<void> {
-    this.weth9.contract = await ethers.deployContract('WETH9', []);
-    this.weth9.address = await this.weth9.contract.getAddress();
   }
 
   /**
@@ -322,9 +289,10 @@ export class EthosDeployer {
 
   /**
    * Deploys the EthosVouch contract.
-   * (depends on signatureVerifier, contractAddressManager, weth9)
+   * (depends on signatureVerifier, contractAddressManager)
    */
   async deployEthosVouch(): Promise<void> {
+    const NO_INITIAL_FEES = 0;
     this.ethosVouch.factory = await ethers.getContractFactory('EthosVouch');
     this.ethosVouch.contract = await ethers.deployContract('EthosVouch', []);
     this.ethosVouch.address = await this.ethosVouch.contract.getAddress();
@@ -336,7 +304,11 @@ export class EthosDeployer {
         this.EXPECTED_SIGNER.address,
         this.signatureVerifier.address,
         this.contractAddressManager.address,
-        this.weth9.address,
+        this.FEE_PROTOCOL_ACC.address,
+        NO_INITIAL_FEES,
+        NO_INITIAL_FEES,
+        NO_INITIAL_FEES,
+        NO_INITIAL_FEES,
       ]),
     );
     await this.ethosVouch.proxy.waitForDeployment();
@@ -347,93 +319,6 @@ export class EthosDeployer {
     } else {
       throw new Error('EthosVouch address is undefined');
     }
-  }
-
-  /**
-   * Deploys the EthosEscrow contract.
-   * (depends on contractAddressManager)
-   */
-  async deployEthosEscrow(): Promise<void> {
-    this.ethosEscrow.contract = await ethers.deployContract('EthosEscrow', [
-      this.contractAddressManager.address,
-    ]);
-    this.ethosEscrow.address = await this.ethosEscrow.contract.getAddress();
-  }
-
-  /**
-   * Deploys the EthosSlashPenalty contract.
-   * (depends on signatureVerifier, contractAddressManager)
-   */
-  async deployEthosSlashPenalty(): Promise<void> {
-    this.ethosSlashPenalty.factory = await ethers.getContractFactory('EthosSlashPenalty');
-    this.ethosSlashPenalty.contract = await ethers.deployContract('EthosSlashPenalty', []);
-    this.ethosSlashPenalty.address = await this.ethosSlashPenalty.contract.getAddress();
-    this.ethosSlashPenalty.proxy = await this.ERC1967Proxy.factory.deploy(
-      this.ethosSlashPenalty.address,
-      this.ethosSlashPenalty.factory.interface.encodeFunctionData('initialize', [
-        this.OWNER.address,
-        this.ADMIN.address,
-        this.EXPECTED_SIGNER.address,
-        this.signatureVerifier.address,
-        this.contractAddressManager.address,
-      ]),
-    );
-    await this.ethosSlashPenalty.proxy.waitForDeployment();
-    this.ethosSlashPenalty.address = await this.ethosSlashPenalty.proxy.getAddress();
-
-    if (this.ethosSlashPenalty.address) {
-      this.ethosSlashPenalty.contract = await ethers.getContractAt(
-        'EthosSlashPenalty',
-        this.ethosSlashPenalty.address,
-      );
-    } else {
-      throw new Error('EthosSlashPenalty address is undefined');
-    }
-  }
-
-  /**
-   * Deploys the EthosVaultManager contract.
-   * (depends on signatureVerifier, contractAddressManager)
-   */
-  async deployEthosVaultManager(): Promise<void> {
-    this.ethosVaultManager.factory = await ethers.getContractFactory('EthosVaultManager');
-    this.ethosVaultManager.contract = await ethers.deployContract('EthosVaultManager', []);
-    this.ethosVaultManager.address = await this.ethosVaultManager.contract.getAddress();
-    this.ethosVaultManager.proxy = await this.ERC1967Proxy.factory.deploy(
-      this.ethosVaultManager.address,
-      this.ethosVaultManager.factory.interface.encodeFunctionData('initialize', [
-        this.OWNER.address,
-        this.ADMIN.address,
-        this.EXPECTED_SIGNER.address,
-        this.signatureVerifier.address,
-        this.contractAddressManager.address,
-        this.FEE_PROTOCOL_ACC.address,
-        0n,
-        0n,
-        0n,
-        0n,
-      ]),
-    );
-    await this.ethosVaultManager.proxy.waitForDeployment();
-    this.ethosVaultManager.address = await this.ethosVaultManager.proxy.getAddress();
-
-    if (this.ethosVaultManager.address) {
-      this.ethosVaultManager.contract = await ethers.getContractAt(
-        'EthosVaultManager',
-        this.ethosVaultManager.address,
-      );
-    } else {
-      throw new Error('EthosVaultManager address is undefined');
-    }
-  }
-
-  /**
-   * Deploys the EthosVaultFactory contract.
-   * (depends on contractAddressManager)
-   */
-  async deployEthosVaultFactory(): Promise<void> {
-    this.ethosVaultFactory.contract = await ethers.deployContract('EthosVaultFactory', []);
-    this.ethosVaultFactory.address = await this.ethosVaultFactory.contract.getAddress();
   }
 
   /**
@@ -491,10 +376,6 @@ export class EthosDeployer {
       { name: smartContractNames.review, address: this.ethosReview.address },
       { name: smartContractNames.vote, address: this.ethosVote.address },
       { name: smartContractNames.vouch, address: this.ethosVouch.address },
-      { name: smartContractNames.escrow, address: this.ethosEscrow.address },
-      { name: smartContractNames.slashPenalty, address: this.ethosSlashPenalty.address },
-      { name: smartContractNames.vaultManager, address: this.ethosVaultManager.address },
-      { name: smartContractNames.vaultFactory, address: this.ethosVaultFactory.address },
       { name: smartContractNames.interactionControl, address: this.interactionControl.address },
       { name: smartContractNames.reputationMarket, address: this.reputationMarket.address },
     ];

@@ -7,7 +7,6 @@ error InvalidReviewDetails(string message);
 error SelfReview(address subject);
 error ReviewNotFound(uint256 reviewId);
 error WithdrawalFailed(bytes data, string message);
-error UnauthorizedArchiving(uint256 reviewId);
 error ReviewIsArchived(uint256 reviewId);
 error ReviewNotArchived(uint256 reviewId);
 error MustCreateAttestationFirst();

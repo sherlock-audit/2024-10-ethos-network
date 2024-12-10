@@ -1,0 +1,25 @@
+{
+  "extends": "../../tsconfig.json",
+  "include": [
+    "**/*.ts",
+    "**/*.tsx",
+    "postcss.config.js"
+  ],
+  "compilerOptions": {
+    "lib": ["DOM", "DOM.Iterable", "ES2023"],
+    "types": ["@remix-run/node", "vite/client"],
+    "isolatedModules": true,
+    "module": "ESNext",
+    "moduleResolution": "Bundler",
+    "allowJs": true,
+    "paths": {
+      "~/*": ["./app/*"],
+    },
+
+    // https://vite.dev/guide/performance#reduce-resolve-operations
+    "allowImportingTsExtensions": true,
+
+    // Vite takes care of building everything, not tsc.
+    "noEmit": true
+  }
+}

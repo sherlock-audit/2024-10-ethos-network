@@ -1,6 +1,6 @@
 import { init, track } from '@amplitude/analytics-node';
 import { type NodeOptions } from '@amplitude/analytics-types';
-import { type Attributes } from './analytics.type';
+import { type Attributes } from './analytics.type.js';
 
 export class ServerAnalyticsClient {
   private globalEventProperties: Attributes = {};

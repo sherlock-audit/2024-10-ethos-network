@@ -1,0 +1,9 @@
+<svg width="581" height="580" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <circle cx="403.277" cy="403.277" r="280.878" transform="rotate(-44.976 16.062 563.949)" stroke="url(#a)" stroke-width="242.797" stroke-dasharray="0.9 17.92" style="mix-blend-mode:overlay" />
+  <defs>
+    <radialGradient id="a" cx="0" cy="0" r="1" gradientUnits="userSpaceOnUse" gradientTransform="rotate(90 -.236 403.513) scale(435.43)">
+      <stop offset=".3" stop-color="#1F2126" stop-opacity=".88"/>
+      <stop offset=".845" stop-color="#1F2126" stop-opacity=".15"/>
+    </radialGradient>
+  </defs>
+</svg>

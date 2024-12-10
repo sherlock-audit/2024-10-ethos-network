@@ -1,12 +1,12 @@
-import { type HardhatEthersSigner } from '@nomicfoundation/hardhat-ethers/signers';
-import { loadFixture } from '@nomicfoundation/hardhat-toolbox/network-helpers';
+import { type HardhatEthersSigner } from '@nomicfoundation/hardhat-ethers/signers.js';
+import { loadFixture } from '@nomicfoundation/hardhat-toolbox/network-helpers.js';
 import { expect } from 'chai';
 
 import { zeroAddress } from 'viem';
-import { type EthosProfile } from '../../typechain-types';
+import { type EthosProfile } from '../../typechain-types/index.js';
 
-import { createDeployer, type EthosDeployer } from '../utils/deployEthos';
-import { type EthosUser } from '../utils/ethosUser';
+import { createDeployer, type EthosDeployer } from '../utils/deployEthos.js';
+import { type EthosUser } from '../utils/ethosUser.js';
 
 describe('EthosProfile Invites', () => {
   let deployer: EthosDeployer;
@@ -121,7 +121,7 @@ describe('EthosProfile Invites', () => {
     await ethosProfile.connect(nonEthosUser).createProfile(userA.profileId);
     await expect(userB.sendInvite(nonEthosUser.address)).to.be.revertedWithCustomError(
       ethosProfile,
-      'ProfileExists',
+      'ProfileExistsForAddress',
     );
   });
 
@@ -244,5 +244,31 @@ describe('EthosProfile Invites', () => {
       .reverted;
 
     expect(await ethosProfile.maxNumberOfInvites()).to.equal(newMaxInvites);
+  });
+
+  it('should fail to invite an address that has been compromised', async () => {
+    // Step 1: userA registers a new address
+    const newAddress = await deployer.newWallet();
+    await userA.registerAddress(newAddress.address);
+
+    // Step 2: userA removes the registered address
+    await ethosProfile.connect(userA.signer).deleteAddressAtIndex(1, true);
+
+    // Step 3: userB attempts to send an invite to the removed address
+    await userB.grantInvites(1);
+    await expect(userB.sendInvite(newAddress.address)).to.be.revertedWithCustomError(
+      ethosProfile,
+      'AddressCompromised',
+    );
+  });
+
+  it('should not uninvite from archived profile', async () => {
+    await userA.grantInvites(1);
+    await userA.sendInvite(nonEthosUser.address);
+    await userA.archiveProfile();
+
+    await expect(ethosProfile.connect(userA.signer).uninviteUser(nonEthosUser.address))
+      .to.be.revertedWithCustomError(ethosProfile, 'ProfileAccess')
+      .withArgs(userA.profileId, 'Profile is archived');
   });
 });

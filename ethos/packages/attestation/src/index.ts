@@ -1,1 +1,1 @@
-export { xComHelpers } from './x-com';
+export { xComHelpers } from './x-com.js';

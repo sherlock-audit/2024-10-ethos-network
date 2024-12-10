@@ -1,4 +1,4 @@
-import { formatCurrency, formatEth, formatNumber } from '../number';
+import { formatCurrency, formatEth, formatNumber } from '../number.js';
 
 test('formatNumber', () => {
   expect(formatNumber(1.23456789)).toEqual('1.2346');

@@ -2,28 +2,28 @@
 import { readFileSync, writeFileSync } from 'node:fs';
 import { ETHOS_ENVIRONMENTS, type EthosEnvironment } from '@ethos/env';
 import { getLogger } from '@ethos/logger';
-import { artifacts, ethers, network } from 'hardhat';
+import hre from 'hardhat';
 import inquirer from 'inquirer';
-import { cloneDeep, merge } from 'lodash';
+import { cloneDeep, merge } from 'lodash-es';
 import pc from 'picocolors';
 import { getAddress, type Address } from 'viem';
-import { type DeploymentScriptAction } from '../deploy';
+import { type DeploymentScriptAction } from '../deploy.js';
 import {
   getContractsForEnvironment,
   type Network,
   type Contract,
   type ContractConfig,
   getContractKeyByEnvironment,
-} from '../src';
+} from '../src/index.js';
 import {
-  BASE_MAINNET,
   getAdminAccount,
   getSignerAccount,
   placeholderContractMetadata,
   placeholderProxyContractMetadata,
-  WETH9_MAINNET,
-  WETH9_TESTNET,
-} from './utils';
+  writeContractABI,
+} from './utils.js';
+
+const { ethers, network } = hre;
 
 type ContractData = {
   address: Address;
@@ -53,7 +53,6 @@ if (!ethosEnvironmentRaw || !isEthosEnvironment(ethosEnvironmentRaw)) {
   throw new Error(`Invalid ETHOS_ENVIRONMENT: ${ethosEnvironmentRaw}`);
 }
 const ethosEnvironment = ethosEnvironmentRaw;
-const isMainnet = network.name === BASE_MAINNET;
 const contractLookup = getContractsForEnvironment(ethosEnvironment);
 const adminAccount = getAdminAccount(network.name);
 const signerAccount = getSignerAccount(network.name);
@@ -149,44 +148,11 @@ const contractsConfigMap: ContractConfig = {
       signerAccount,
       contractLookup.signatureVerifier.address,
       contractLookup.contractAddressManager.address,
-      isMainnet ? WETH9_MAINNET : WETH9_TESTNET,
-    ],
-  },
-  escrow: {
-    name: contractLookup.escrow.name,
-    isUpgradeable: contractLookup.escrow.isUpgradeable,
-    getArguments: () => [contractLookup.contractAddressManager.address],
-  },
-  vaultManager: {
-    name: contractLookup.vaultManager.name,
-    isUpgradeable: contractLookup.vaultManager.isUpgradeable,
-    getArguments: (ownerAccount) => [
-      ownerAccount,
-      adminAccount,
-      signerAccount,
-      contractLookup.signatureVerifier.address,
-      contractLookup.contractAddressManager.address,
-      ownerAccount, // ! IMPORTANT ! where to send protocol fees
-      '0', // protocol fee basis points
-      '0', // donation fee basis points
-      '0', // vouchers pool fee basis points
+      ownerAccount, // protocol fee address
+      '0', // entry protocol fee basis points
       '0', // exit fee basis points
-    ],
-  },
-  vaultFactory: {
-    name: contractLookup.vaultFactory.name,
-    isUpgradeable: contractLookup.vaultFactory.isUpgradeable,
-    getArguments: () => [],
-  },
-  slashPenalty: {
-    name: contractLookup.slashPenalty.name,
-    isUpgradeable: contractLookup.slashPenalty.isUpgradeable,
-    getArguments: (ownerAccount) => [
-      ownerAccount,
-      adminAccount,
-      signerAccount,
-      contractLookup.signatureVerifier.address,
-      contractLookup.contractAddressManager.address,
+      '0', // entry donation fee basis points
+      '0', // entry vouchers pool fee basis points
     ],
   },
 };
@@ -213,7 +179,6 @@ const deployAction: DeploymentScriptAction | undefined = isDeploymentScriptActio
 
 // determine which filepath per contract
 const metadataFilePath = `./src/${contractName}.json`;
-const abiFilePath = `./src/${contractName}-abi.json`;
 
 async function main(): Promise<void> {
   const networkName = network.name as Network;
@@ -279,7 +244,7 @@ async function main(): Promise<void> {
     }
   }
 
-  const { abi } = await artifacts.readArtifact(contractConfig.name);
+  await writeContractABI(contractName, contractConfig);
 
   const newContractMetadata: ContractData = {
     address: getAddress(address),
@@ -301,9 +266,6 @@ async function main(): Promise<void> {
 
   // Save the contract metadata to a JSON file
   writeFileSync(metadataFilePath, `${JSON.stringify(metadata, null, 2)}\n`);
-
-  // Save the contract ABI to a JSON file
-  writeFileSync(abiFilePath, JSON.stringify(abi, null, 2));
 
   // eslint-disable-next-line no-console
   console.log(`✅ ${pc.blue(contractConfig.name)} deployed to ${pc.yellow(address)}`);

@@ -1,12 +1,14 @@
-import { loadFixture } from '@nomicfoundation/hardhat-toolbox/network-helpers';
+import { loadFixture } from '@nomicfoundation/hardhat-toolbox/network-helpers.js';
 import { expect } from 'chai';
-import { ethers } from 'hardhat';
+import { type BytesLike } from 'ethers';
+import hre from 'hardhat';
+
+const { ethers } = hre;
 
 const smartContractNames = {
   attestation: 'ETHOS_ATTESTATION',
   contractAddressManager: 'ETHOS_CONTRACT_ADDRESS_MANAGER',
   discussion: 'ETHOS_DISCUSSION',
-  escrow: 'ETHOS_ESCROW',
   interactionControl: 'ETHOS_INTERACTION_CONTROL',
   profile: 'ETHOS_PROFILE',
   reputationMarket: 'ETHOS_REPUTATION_MARKET',
@@ -14,9 +16,6 @@ const smartContractNames = {
   signatureVerifier: 'ETHOS_SIGNATURE_VERIFIER',
   vote: 'ETHOS_VOTE',
   vouch: 'ETHOS_VOUCH',
-  vaultManager: 'ETHOS_VAULT_MANAGER',
-  vaultFactory: 'ETHOS_VAULT_FACTORY',
-  slashPenalty: 'ETHOS_SLASH_PENALTY',
 } as const;
 
 describe('AccessControl', () => {
@@ -515,5 +514,57 @@ describe('AccessControl', () => {
       await interactionControl.connect(OWNER).unpauseContract(smartContractNames.profile);
       expect(await ethosProfile.paused()).to.equal(false, 'Should be false after');
     });
+  });
+});
+
+describe('Upgradeability', () => {
+  it('should preserve storage values after upgrade', async () => {
+    const [owner, admin, signer] = await ethers.getSigners();
+
+    // Deploy required contracts first
+    const SignatureVerifier = await ethers.getContractFactory('SignatureVerifier');
+    const signatureVerifier = await SignatureVerifier.deploy();
+
+    const ContractAddressManager = await ethers.getContractFactory('ContractAddressManager');
+    const contractAddressManager = await ContractAddressManager.deploy();
+
+    // Deploy implementation and proxy
+    const Profile = await ethers.getContractFactory('EthosProfile');
+    const implementation = await Profile.deploy();
+
+    const Proxy = await ethers.getContractFactory('ERC1967Proxy');
+    const proxy = await Proxy.deploy(
+      await implementation.getAddress(),
+      Profile.interface.encodeFunctionData('initialize', [
+        owner.address,
+        admin.address,
+        signer.address,
+        await signatureVerifier.getAddress(),
+        await contractAddressManager.getAddress(),
+      ]),
+    );
+
+    // Get contract instance
+    const profile = await ethers.getContractAt('EthosProfile', await proxy.getAddress());
+
+    // Cast role to BytesLike for type safety
+    const ownerRole = (await profile.OWNER_ROLE()) as BytesLike;
+    const initialOwner = await profile.getRoleMember(ownerRole, 0);
+
+    const ProfileV2 = await ethers.getContractFactory('EthosProfile');
+    const implementationV2 = await ProfileV2.deploy();
+
+    // Get proxy with UUPSUpgradeable interface and call upgradeToAndCall with empty data
+    const upgradeableProxy = await ethers.getContractAt(
+      'UUPSUpgradeable',
+      await proxy.getAddress(),
+    );
+
+    await upgradeableProxy.connect(owner).upgradeToAndCall(
+      await implementationV2.getAddress(),
+      '0x', // empty calldata
+    );
+
+    expect(await profile.getRoleMember(ownerRole, 0)).to.equal(initialOwner);
   });
 });

@@ -1,0 +1,141 @@
+@layer antd;
+@layer tailwind-base {
+  @tailwind base;
+}
+@tailwind components;
+@tailwind utilities;
+
+
+@layer base {
+
+  [class*="border"] {
+    border-style: solid;
+    border-width: 0;
+  }
+    /* Bold weight (600) */
+  @font-face {
+    font-family: 'Queens';
+    src: url('/assets/fonts/Queens_W-Bold.woff2') format('woff2'),
+        url('/assets/fonts/Queens_W-Bold.woff') format('woff'),
+        url('/assets/fonts/Queens-Bold.ttf') format('truetype');
+    font-weight: 600;
+    font-style: normal;
+    font-display: swap;
+  }
+
+  /* Regular weight (400) */
+  @font-face {
+    font-family: 'Queens';
+    src: url('/assets/fonts/Queens_W-Regular.woff2') format('woff2'),
+        url('/assets/fonts/Queens_W-Regular.woff') format('woff'),
+        url('/assets/fonts/Queens-Regular.ttf') format('truetype');
+    font-weight: 400;
+    font-style: normal;
+    font-display: swap;
+  }
+
+  /* Thin weight (100) */
+  @font-face {
+    font-family: 'Queens';
+    src: url('/assets/fonts/Queens_W-Thin.woff2') format('woff2'),
+        url('/assets/fonts/Queens_W-Thin.woff') format('woff'),
+        url('/assets/fonts/Queens-Thin.ttf') format('truetype');
+    font-weight: 100;
+    font-style: normal;
+    font-display: swap;
+  }
+
+
+  body {
+    margin: 0;
+    padding: env(safe-area-inset-top) env(safe-area-inset-right) env(safe-area-inset-bottom) env(safe-area-inset-left);
+  }
+
+  h1,
+  h2,
+  h3,
+  h4,
+  h5,
+  h6 {
+    margin-block-start: 0;
+    margin-block-end: 0;
+    margin-inline-start: 0;
+    margin-inline-end: 0;
+    font-family: Queens, sans-serif !important;
+    font-weight: 400;
+  }
+
+  p,
+  span,
+  div {
+    font-feature-settings: 'calt' 0;
+  }
+
+  *,
+  *:before,
+  *:after {
+    box-sizing: border-box;
+  }
+
+
+  @media (pointer: coarse) {
+    input,
+    textarea,
+    .ant-input {
+      font-size: 16px !important;
+    }
+  }
+
+  /*
+  Override Alert icon colors: https://github.com/ant-design/ant-design-icons/issues/644
+  */
+  .ant-notification .ant-notification-notice-wrapper .ant-notification-notice-icon-success.anticon, .ant-alert.ant-alert-success .ant-alert-icon {
+    color: var(--ant-color-success);
+  }
+
+  .ant-notification .ant-notification-notice-wrapper .ant-notification-notice-icon-info.anticon, .ant-alert.ant-alert-info .ant-alert-icon {
+    color: var(--ant-color-info);
+  }
+
+  .ant-notification .ant-notification-notice-wrapper .ant-notification-notice-icon-warning.anticon, .ant-alert.ant-alert-warning .ant-alert-icon {
+    color: var(--ant-color-warning);
+  }
+
+  .ant-notification .ant-notification-notice-wrapper .ant-notification-notice-icon-error.anticon, .ant-alert.ant-alert-error .ant-alert-icon {
+    color: var(--ant-color-error);
+  }
+
+  .ant-alert .ant-alert-close-icon .anticon-close {
+      color: var(--ant-color-text);
+  }
+}
+
+:root {
+  --borderDark: #BDBDB6;
+  --borderSecondary: #1f21260f;
+  --colorTrust: #08979C;
+  --colorDistrust: #D4380D;
+  --colorTrustBg: #ACC3BC;
+  --colorDistrustBg: #C6B0A3;
+}
+
+.dark {
+  --borderDark: #44443F;
+  --borderSecondary: #FFFFFF0F;
+  --colorTrust: #13A8A8;
+  --colorDistrust: #D84A1B;
+  --colorTrustBg: #29423F;
+  --colorDistrustBg: #4A3227;
+
+}
+
+
+.transact-input input[type="number"] {
+  -webkit-appearance: textfield !important;
+     -moz-appearance: textfield !important;
+          appearance: textfield !important;
+}
+.transact-input input[type=number]::-webkit-inner-spin-button,
+.transact-input input[type=number]::-webkit-outer-spin-button {
+  -webkit-appearance: none !important;
+}

@@ -1,8 +1,10 @@
 /* eslint-disable no-console */
 import { type EthosEnvironment } from '@ethos/env';
 import { getLogger } from '@ethos/logger';
-import { ethers } from 'hardhat';
-import { getContractsForEnvironment } from '../src';
+import hre from 'hardhat';
+import { getContractsForEnvironment } from '../src/index.js';
+
+const { ethers } = hre;
 
 const logger = getLogger('update-contract-management');
 

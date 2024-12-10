@@ -137,21 +137,23 @@ export function fromUserKey(
  *
  * @example
  * // Returns true
- * isUserKeyValid({ address: "0x1234..." })
+ * isTargetValid({ address: "0x1234..." })
  *
  * @example
  * // Returns true
- * isUserKeyValid({ service: "x.com", account: "123456789" })
+ * isTargetValid({ service: "x.com", account: "123456789" })
  *
  * @example
  * // Returns true
- * isUserKeyValid({ service: "x.com", username: "johndoe" })
+ * isTargetValid({ service: "x.com", username: "johndoe" })
  *
  * @example
  * // Returns true
- * isUserKeyValid({ profileId: 1 })
+ * isTargetValid({ profileId: 1 })
  */
-export function isUserKeyValid(targetUser: EthosUserTargetWithTwitterUsername): boolean {
+// TODO: rename to `isTargetValid`. We are checking the target (object), not a
+// userkey (serialized target as a string)
+export function isTargetValid(targetUser: EthosUserTargetWithTwitterUsername): boolean {
   const keysLength = Object.keys(targetUser).length;
 
   if ('address' in targetUser && keysLength === 1) {

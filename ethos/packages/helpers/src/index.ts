@@ -1,17 +1,20 @@
-export { isAddressEqualSafe, isValidAddress } from './address';
-export { isValidEnsName } from './ens';
-export { notEmpty } from './notEmpty';
-export { formatCurrency, formatEth, formatNumber, toNumber } from './number';
-export { shortenHash } from './shortenHash';
+export { isAddressEqualSafe, isValidAddress } from './address.js';
+export { isValidEnsName } from './ens.js';
+export { notEmpty } from './notEmpty.js';
+export { formatCurrency, formatEth, formatNumber, toNumber, formatXPScore } from './number.js';
+export { shortenHash } from './shortenHash.js';
 export {
   getRelativeTime,
   getUnixTime,
   getDateFromUnix,
   formatDate,
   getUnixTimestamp,
-} from './datetime';
-export { pluralize } from './pluralize';
-export type { PaginatedQuery, PaginatedResponse } from './pagination';
-export * as JsonHelper from './json';
-export { duration } from './duration';
-export * from './types';
+} from './datetime.js';
+export { pluralize } from './pluralize.js';
+export * from './pagination.js';
+export * as JsonHelper from './json.js';
+export { duration } from './duration.js';
+export { generateSlug } from './urlUtils.js';
+export * from './types.js';
+export * from './delay.js';
+export { capitalize } from './text.js';

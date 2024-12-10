@@ -1,10 +1,12 @@
 {
   "compilerOptions": {
-    "target": "ES2022",
+    "target": "ES2023",
     "lib": [
-      "ES2022"
+      "ES2023"
     ],
-    "module": "commonjs",
+    "types": ["vitest/globals"],
+    "module": "ESNext",
+    "moduleResolution": "Node",
     "forceConsistentCasingInFileNames": true,
     "esModuleInterop": true,
     "noEmitOnError": true,

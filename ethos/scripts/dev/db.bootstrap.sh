@@ -2,6 +2,11 @@
 
 set -e
 
+ethos_bootstrap_sql_path=".cache/ethos-bootstrap.sql"
+emporos_bootstrap_sql_path=".cache/emporos-bootstrap.sql"
+
+mkdir -p .cache
+
 # Check for verbose flag
 verbose=false
 if [[ "$1" == "--verbose" ]]; then
@@ -48,8 +53,8 @@ echo "📤 Exporting database..."
 # Run pg_dump using a PostgreSQL Docker container
 docker run --rm \
   -v ~/certs/dev:/certs \
-  -v $(pwd):/backup \
-  -e PGPASSWORD=$PG_ETHOS_DEV_PASSWORD \
+  -v "$(pwd)":/backup \
+  -e PGPASSWORD="$PG_ETHOS_DEV_PASSWORD" \
   -e PGSSLMODE=require \
   -e PGSSLCERT=/certs/client-cert.pem \
   -e PGSSLKEY=/certs/client-key.pem \
@@ -60,9 +65,27 @@ docker run --rm \
     --username=ethos-dev \
     --dbname=ethos \
     --port=5432 \
-    > ethos-bootstrap.sql
+    > $ethos_bootstrap_sql_path
 
-echo "🎈 Database exported to ethos-bootstrap.sql"
+echo "🎈 Database echo exported to $ethos_bootstrap_sql_path"
+
+docker run --rm \
+  -v ~/certs/dev:/certs \
+  -v "$(pwd)":/backup \
+  -e PGPASSWORD="$PG_ETHOS_DEV_PASSWORD" \
+  -e PGSSLMODE=require \
+  -e PGSSLCERT=/certs/client-cert.pem \
+  -e PGSSLKEY=/certs/client-key.pem \
+  -e PGSSLROOTCERT=/certs/server-ca.pem \
+  postgres:16-alpine \
+  pg_dump \
+    --host=34.31.16.222 \
+    --username=ethos-dev \
+    --dbname=emporos \
+    --port=5432 \
+    > $emporos_bootstrap_sql_path
+
+echo "🎈 Database emporos exported to $emporos_bootstrap_sql_path"
 
 echo "🛑 Stopping Docker containers..."
 docker compose down
@@ -70,8 +93,14 @@ docker compose down
 echo "🔄 Starting Docker containers..."
 
 # Check if ethos-bootstrap.sql exists
-if [ ! -f "ethos-bootstrap.sql" ]; then
-    echo "⚠️  ethos-bootstrap.sql not found. Unable to bootstrap database."
+if [ ! -f $ethos_bootstrap_sql_path ]; then
+    echo "⚠️  $ethos_bootstrap_sql_path not found. Unable to bootstrap database."
+    exit 1
+fi
+
+# Check if emporos-bootstrap.sql exists
+if [ ! -f $emporos_bootstrap_sql_path ]; then
+    echo "⚠️  $emporos_bootstrap_sql_path not found. Unable to bootstrap database."
     exit 1
 fi
 
@@ -106,9 +135,30 @@ done
 
 # Execute bootstrap SQL
 if $verbose; then
-    docker exec -i ethos-db-1 psql ethos --username=postgres < ethos-bootstrap.sql
+    docker exec -i ethos-db-1 psql ethos --username=postgres < $ethos_bootstrap_sql_path
 else
-    docker exec -i ethos-db-1 psql ethos --username=postgres < ethos-bootstrap.sql >/dev/null 2>&1
+    docker exec -i ethos-db-1 psql ethos --username=postgres < $ethos_bootstrap_sql_path >/dev/null 2>&1
+fi
+
+if $verbose; then
+    docker exec -i ethos-db-1 psql --username=postgres -c "CREATE DATABASE emporos;"
+    docker exec -i ethos-db-1 psql emporos --username=postgres < $emporos_bootstrap_sql_path
+else
+    docker exec -i ethos-db-1 psql --username=postgres -c "CREATE DATABASE emporos;" >/dev/null 2>&1
+    docker exec -i ethos-db-1 psql emporos --username=postgres < $emporos_bootstrap_sql_path >/dev/null 2>&1
+fi
+
+SQL_TRUNCATE_USER_FCM_TOKENS="TRUNCATE TABLE user_fcm_tokens RESTART IDENTITY;"
+
+# Execute SQL to drop all user FCM tokens to ensure that we are not sending push
+# notifications to everyone who set up notifications on dev. Otherwise, everyone
+# who run this script, has a copy of tokens locally and whenever there's a new
+# activity, every locally running instance of echo sends a push notification
+# spamming the receiver with duplicates.
+if $verbose; then
+    docker exec -i ethos-db-1 psql ethos --username=postgres -c "$SQL_TRUNCATE_USER_FCM_TOKENS"
+else
+    docker exec -i ethos-db-1 psql ethos --username=postgres -c "$SQL_TRUNCATE_USER_FCM_TOKENS" >/dev/null 2>&1
 fi
 
 echo "🎉 Database bootstrap completed successfully."

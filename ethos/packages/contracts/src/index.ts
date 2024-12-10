@@ -1,39 +1,40 @@
 import { type EthosEnvironment } from '@ethos/env';
 import { type Entries } from 'type-fest';
 import { type Address, getAddress } from 'viem';
-import attestation from './attestation.json';
-import contractAddressManager from './contractAddressManager.json';
-import discussion from './discussion.json';
-import escrow from './escrow.json';
-import interactionControl from './interactionControl.json';
-import profile from './profile.json';
-import reputationMarket from './reputationMarket.json';
-import review from './review.json';
-import signatureVerifier from './signatureVerifier.json';
-import slashPenalty from './slashPenalty.json';
-import { type TypedContractEvent } from './types/common';
-import vaultFactory from './vaultFactory.json';
-import vaultManager from './vaultManager.json';
-import vote from './vote.json';
-import vouch from './vouch.json';
+import attestation from './attestation.json' with { type: 'json' };
+import contractAddressManager from './contractAddressManager.json' with { type: 'json' };
+import { discussionAbi } from './discussion-abi.js';
+import discussion from './discussion.json' with { type: 'json' };
+import interactionControl from './interactionControl.json' with { type: 'json' };
+import profile from './profile.json' with { type: 'json' };
+import reputationMarket from './reputationMarket.json' with { type: 'json' };
+import { reviewAbi } from './review-abi.js';
+import review from './review.json' with { type: 'json' };
+import signatureVerifier from './signatureVerifier.json' with { type: 'json' };
+import { type TypedContractEvent } from './types/common.js';
+import { voteAbi } from './vote-abi.js';
+import vote from './vote.json' with { type: 'json' };
+import vouch from './vouch.json' with { type: 'json' };
 
-export * as TypeChain from './types';
+export * as TypeChain from './types/index.js';
 
-export * as TypeChainCommon from './types/common';
+export * as TypeChainCommon from './types/common.js';
 
 export type { TypedContractEvent };
 
-export * as AttestationTypes from './types/AttestationAbi';
-export * as ContractAddressManagerTypes from './types/ContractAddressManagerAbi';
-export * as DiscussionTypes from './types/DiscussionAbi';
-export * as EscrowTypes from './types/EscrowAbi';
-export * as InteractionControlTypes from './types/InteractionControlAbi';
-export * as ProfileTypes from './types/ProfileAbi';
-export * as ReviewTypes from './types/ReviewAbi';
-export * as SignatureVerifierTypes from './types/SignatureVerifierAbi';
-export * as VoteTypes from './types/VoteAbi';
-export * as VouchTypes from './types/VouchAbi';
-export * as MarketTypes from './types/ReputationMarketAbi';
+export * as AttestationTypes from './types/AttestationAbi.js';
+export * as ContractAddressManagerTypes from './types/ContractAddressManagerAbi.js';
+export * as DiscussionTypes from './types/DiscussionAbi.js';
+export * as InteractionControlTypes from './types/InteractionControlAbi.js';
+export * as ProfileTypes from './types/ProfileAbi.js';
+export * as ReviewTypes from './types/ReviewAbi.js';
+export * as SignatureVerifierTypes from './types/SignatureVerifierAbi.js';
+export * as VoteTypes from './types/VoteAbi.js';
+export * as VouchTypes from './types/VouchAbi.js';
+export * as MarketTypes from './types/ReputationMarketAbi.js';
+
+// ABI for the contracts
+export { discussionAbi, reviewAbi, voteAbi };
 
 export type Network = 'base-sepolia' | 'base-mainnet';
 
@@ -56,7 +57,6 @@ export const smartContractNames = {
   attestation: 'ETHOS_ATTESTATION',
   contractAddressManager: 'ETHOS_CONTRACT_ADDRESS_MANAGER',
   discussion: 'ETHOS_DISCUSSION',
-  escrow: 'ETHOS_ESCROW',
   interactionControl: 'ETHOS_INTERACTION_CONTROL',
   profile: 'ETHOS_PROFILE',
   reputationMarket: 'ETHOS_REPUTATION_MARKET',
@@ -64,9 +64,6 @@ export const smartContractNames = {
   signatureVerifier: 'ETHOS_SIGNATURE_VERIFIER',
   vote: 'ETHOS_VOTE',
   vouch: 'ETHOS_VOUCH',
-  vaultManager: 'ETHOS_VAULT_MANAGER',
-  vaultFactory: 'ETHOS_VAULT_FACTORY',
-  slashPenalty: 'ETHOS_SLASH_PENALTY',
 } as const;
 
 export const contracts = Object.keys(smartContractNames) as ReadonlyArray<
@@ -95,6 +92,20 @@ export type TargetContract =
   | typeof reviewContractName
   | typeof vouchContractName
   | typeof discussionContractName;
+
+/**
+ * Type guard to check if any value is a valid target contract type
+ */
+
+export function isTargetContract(value: unknown): value is TargetContract {
+  return typeof value === 'string' && validTargets.some((v) => v === value);
+}
+const validTargets = [
+  attestationContractName,
+  reviewContractName,
+  vouchContractName,
+  discussionContractName,
+] as const;
 
 export function getNetworkByEnvironment(environment: EthosEnvironment): Network {
   return ETHOS_ENVIRONMENT_NETWORKS[environment];
@@ -226,32 +237,6 @@ function getContractsMap(
       alias: smartContractNames.vouch,
       address: getAddress(vouch[contractEnvironmentKey].address),
       proxyAddress: getAddress(vouch[contractEnvironmentKey].proxyAddress),
-      isUpgradeable: true,
-    },
-    escrow: {
-      name: 'EthosEscrow',
-      alias: smartContractNames.escrow,
-      address: getAddress(escrow[contractEnvironmentKey].address),
-      isUpgradeable: false,
-    },
-    vaultManager: {
-      name: 'EthosVaultManager',
-      alias: smartContractNames.vaultManager,
-      address: getAddress(vaultManager[contractEnvironmentKey].address),
-      proxyAddress: getAddress(vaultManager[contractEnvironmentKey].proxyAddress),
-      isUpgradeable: true,
-    },
-    vaultFactory: {
-      name: 'EthosVaultFactory',
-      alias: smartContractNames.vaultFactory,
-      address: getAddress(vaultFactory[contractEnvironmentKey].address),
-      isUpgradeable: false,
-    },
-    slashPenalty: {
-      name: 'EthosSlashPenalty',
-      alias: smartContractNames.slashPenalty,
-      address: getAddress(slashPenalty[contractEnvironmentKey].address),
-      proxyAddress: getAddress(slashPenalty[contractEnvironmentKey].proxyAddress),
       isUpgradeable: true,
     },
   };

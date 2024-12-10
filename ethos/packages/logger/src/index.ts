@@ -42,10 +42,11 @@ export function getLogger(
     : './logs/ethos.log'; // Fallback to a default log path
 
   const usePinoPretty = !isProduction && !process.env.LOG_FOLDER;
+  const level = process.env.LOG_LEVEL ?? 'info';
 
   const targets: pino.TransportMultiOptions['targets'] = [
     ...(usePinoPretty
-      ? [{ target: 'pino-pretty' }]
+      ? [{ target: 'pino-pretty', level }]
       : [
           {
             // Ensures stdout is still used
@@ -63,13 +64,10 @@ export function getLogger(
     transport: {
       targets,
     },
+    level,
   };
 
   const logger = process.env.LOG_FOLDER ? pino(config, pino.destination(logFile)) : pino(config);
-
-  if (process.env.LOG_LEVEL) {
-    logger.level = process.env.LOG_LEVEL;
-  }
 
   return logger.child({ service });
 }

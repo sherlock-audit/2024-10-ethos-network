@@ -1,9 +1,9 @@
-import { type HardhatEthersSigner } from '@nomicfoundation/hardhat-ethers/signers';
-import { loadFixture } from '@nomicfoundation/hardhat-toolbox/network-helpers';
+import { type HardhatEthersSigner } from '@nomicfoundation/hardhat-ethers/signers.js';
+import { loadFixture } from '@nomicfoundation/hardhat-toolbox/network-helpers.js';
 import { expect } from 'chai';
-import { type EthosProfile } from '../../typechain-types';
-import { createDeployer, type EthosDeployer } from '../utils/deployEthos';
-import { type EthosUser } from '../utils/ethosUser';
+import { type EthosProfile } from '../../typechain-types/index.js';
+import { createDeployer, type EthosDeployer } from '../utils/deployEthos.js';
+import { type EthosUser } from '../utils/ethosUser.js';
 
 describe('Creating Ethos Profiles', () => {
   let deployer: EthosDeployer;

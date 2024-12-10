@@ -3,18 +3,11 @@
   "version": "1.0.0",
   "description": "Utility functions for Ethos attestation",
   "main": "dist/index.js",
-  "module": "dist/index.mjs",
-  "exports": {
-    ".": {
-      "types": "./dist/index.d.ts",
-      "import": "./dist/index.mjs",
-      "require": "./dist/index.js"
-    }
-  },
+  "type": "module",
   "author": "Ethos Network Inc.",
   "license": "UNLICENSED",
   "scripts": {
-    "build": "tsup --config ../tsup.config.ts",
-    "watch": "tsup --config ../tsup.config.ts --clean false --watch"
+    "build": "tsc -b",
+    "watch": "tsc -w"
   }
 }

@@ -1,11 +1,11 @@
-import { type HardhatEthersSigner } from '@nomicfoundation/hardhat-ethers/signers';
-import { loadFixture } from '@nomicfoundation/hardhat-toolbox/network-helpers';
+import { type HardhatEthersSigner } from '@nomicfoundation/hardhat-ethers/signers.js';
+import { loadFixture } from '@nomicfoundation/hardhat-toolbox/network-helpers.js';
 import { expect } from 'chai';
 import { type ContractTransactionResponse } from 'ethers';
-import { type EthosProfile } from '../../typechain-types';
-import { common } from '../utils/common';
-import { createDeployer, type EthosDeployer } from '../utils/deployEthos';
-import { type EthosUser } from '../utils/ethosUser';
+import { type EthosProfile } from '../../typechain-types/index.js';
+import { common } from '../utils/common.js';
+import { createDeployer, type EthosDeployer } from '../utils/deployEthos.js';
+import { type EthosUser } from '../utils/ethosUser.js';
 
 const DEFAULT_MAX_ADDRESSES = 4;
 
@@ -27,23 +27,6 @@ describe('EthosProfile Address Registration', () => {
     await setMaxAddresses(DEFAULT_MAX_ADDRESSES);
   });
 
-  async function registerAddress(
-    user: EthosUser,
-    address: string,
-  ): Promise<ContractTransactionResponse> {
-    const randValue = Math.floor(Math.random() * 1000000);
-    const signature = await common.signatureForRegisterAddress(
-      address,
-      user.profileId.toString(),
-      randValue.toString(),
-      EXPECTED_SIGNER,
-    );
-
-    return await ethosProfile
-      .connect(user.signer)
-      .registerAddress(address, user.profileId, randValue, signature);
-  }
-
   async function setMaxAddresses(maxAddresses: number): Promise<ContractTransactionResponse> {
     return await ethosProfile.connect(deployer.ADMIN).setMaxAddresses(maxAddresses);
   }
@@ -51,35 +34,35 @@ describe('EthosProfile Address Registration', () => {
   async function bulkRegisterAddresses(user: EthosUser, count: number | bigint): Promise<void> {
     const registrationPromises = Array.from({ length: Number(count) }, async () => {
       const newWallet = await deployer.newWallet();
-      await registerAddress(user, newWallet.address);
+      await user.registerAddress(newWallet.address);
     });
 
     await Promise.all(registrationPromises);
   }
 
   it('should allow a user to register a new address', async () => {
-    await expect(registerAddress(userA, newAddress.address))
+    await expect(userA.registerAddress(newAddress.address))
       .to.emit(ethosProfile, 'AddressClaim')
-      .withArgs(userA.profileId, newAddress.address, 1); // 1 is AddressClaimStatus.Claimed
+      .withArgs(userA.profileId, newAddress.address, 1);
 
     expect(await ethosProfile.profileIdByAddress(newAddress.address)).to.equal(userA.profileId);
   });
 
   it('should not allow registering an address that belongs to another profile', async () => {
-    await registerAddress(userA, newAddress.address);
+    await userA.registerAddress(newAddress.address);
 
-    await expect(registerAddress(userB, newAddress.address))
+    await expect(userB.registerAddress(newAddress.address))
       .to.be.revertedWithCustomError(ethosProfile, 'ProfileExistsForAddress')
       .withArgs(newAddress.address);
   });
 
   it('should allow re-registering a previously deleted address', async () => {
-    await registerAddress(userA, newAddress.address);
+    await userA.registerAddress(newAddress.address);
     const addresses = await ethosProfile.addressesForProfile(userA.profileId);
     const indexToDelete = addresses.findIndex((addr) => addr === newAddress.address);
-    await ethosProfile.connect(userA.signer).deleteAddressAtIndex(indexToDelete);
+    await ethosProfile.connect(userA.signer).deleteAddressAtIndex(indexToDelete, false);
 
-    await expect(registerAddress(userA, newAddress.address))
+    await expect(userA.registerAddress(newAddress.address))
       .to.emit(ethosProfile, 'AddressClaim')
       .withArgs(userA.profileId, newAddress.address, 1);
   });
@@ -99,25 +82,25 @@ describe('EthosProfile Address Registration', () => {
         .connect(userA.signer)
         .registerAddress(newAddress.address, nonExistentProfileId, randValue, signature),
     )
-      .to.be.revertedWithCustomError(ethosProfile, 'ProfileNotFound')
-      .withArgs(nonExistentProfileId);
+      .to.be.revertedWithCustomError(ethosProfile, 'ProfileNotFoundForAddress')
+      .withArgs(userA.signer.address);
   });
 
   it('should not allow registering an address for an archived profile', async () => {
     await ethosProfile.connect(userA.signer).archiveProfile();
 
-    await expect(registerAddress(userA, newAddress.address))
+    await expect(userA.registerAddress(newAddress.address))
       .to.be.revertedWithCustomError(ethosProfile, 'ProfileAccess')
       .withArgs(userA.profileId, 'Profile is archived');
   });
 
   it('should not allow registering a compromised address', async () => {
-    await registerAddress(userA, newAddress.address);
+    await userA.registerAddress(newAddress.address);
     const addresses = await ethosProfile.addressesForProfile(userA.profileId);
     const indexToDelete = addresses.findIndex((addr) => addr === newAddress.address);
-    await ethosProfile.connect(userA.signer).deleteAddressAtIndex(indexToDelete);
+    await ethosProfile.connect(userA.signer).deleteAddressAtIndex(indexToDelete, true);
 
-    await expect(registerAddress(userB, newAddress.address))
+    await expect(userB.registerAddress(newAddress.address))
       .to.be.revertedWithCustomError(ethosProfile, 'AddressCompromised')
       .withArgs(newAddress.address);
   });
@@ -159,7 +142,7 @@ describe('EthosProfile Address Registration', () => {
     // Delete the registered address
     const addresses = await ethosProfile.addressesForProfile(userA.profileId);
     const indexToDelete = addresses.findIndex((addr) => addr === newAddress.address);
-    await ethosProfile.connect(userA.signer).deleteAddressAtIndex(indexToDelete);
+    await ethosProfile.connect(userA.signer).deleteAddressAtIndex(indexToDelete, false);
 
     // Attempt to register the same address again with the same signature
     await expect(
@@ -177,25 +160,23 @@ describe('EthosProfile Address Registration', () => {
     expect(addresses.length).to.equal(maxAddresses);
 
     const excessAddress = await deployer.newWallet();
-    await expect(registerAddress(userA, excessAddress.address))
+    await expect(userA.registerAddress(excessAddress.address))
       .to.be.revertedWithCustomError(ethosProfile, 'MaxAddressesReached')
       .withArgs(userA.profileId);
   });
 
-  it('should count deleted addresses towards the maximum', async () => {
+  it('should not count deleted addresses towards the maximum', async () => {
     const maxAddresses = await ethosProfile.maxNumberOfAddresses();
 
     await bulkRegisterAddresses(userA, maxAddresses - 1n);
 
     // Delete two addresses
-    await ethosProfile.connect(userA.signer).deleteAddressAtIndex(1);
-    await ethosProfile.connect(userA.signer).deleteAddressAtIndex(1);
+    await ethosProfile.connect(userA.signer).deleteAddressAtIndex(1, false);
+    await ethosProfile.connect(userA.signer).deleteAddressAtIndex(1, false);
 
     // Try to register one more
     const excessAddress = await deployer.newWallet();
-    await expect(registerAddress(userA, excessAddress.address))
-      .to.be.revertedWithCustomError(ethosProfile, 'MaxAddressesReached')
-      .withArgs(userA.profileId);
+    await expect(userA.registerAddress(excessAddress.address)).to.not.be.reverted;
   });
 
   it('should allow admin to set max addresses', async () => {
@@ -233,8 +214,78 @@ describe('EthosProfile Address Registration', () => {
     await bulkRegisterAddresses(userA, newMaxAddresses - 1);
 
     const excessAddress = await deployer.newWallet();
-    await expect(registerAddress(userA, excessAddress.address))
+    await expect(userA.registerAddress(excessAddress.address))
       .to.be.revertedWithCustomError(ethosProfile, 'MaxAddressesReached')
       .withArgs(userA.profileId);
+  });
+
+  it('should allow deleting an address using deleteAddress', async () => {
+    // Register two addresses
+    const secondAddress = await deployer.newWallet();
+    await userA.registerAddress(newAddress.address);
+    await userA.registerAddress(secondAddress.address);
+
+    // Delete the first address
+    await expect(ethosProfile.connect(userA.signer).deleteAddress(newAddress.address, false))
+      .to.emit(ethosProfile, 'AddressClaim')
+      .withArgs(userA.profileId, newAddress.address, 0); // 0 = Unclaimed
+
+    // Verify address was removed
+    const addresses = await ethosProfile.addressesForProfile(userA.profileId);
+    expect(addresses).to.not.include(newAddress.address);
+    expect(addresses).to.include(secondAddress.address);
+    expect(await ethosProfile.profileIdByAddress(newAddress.address)).to.equal(0);
+  });
+
+  it('should allow deleting an address and marking it as compromised', async () => {
+    await userA.registerAddress(newAddress.address);
+
+    await expect(ethosProfile.connect(userA.signer).deleteAddress(newAddress.address, true))
+      .to.emit(ethosProfile, 'AddressClaim')
+      .withArgs(userA.profileId, newAddress.address, 0);
+
+    const isCompromised = await ethosProfile.isAddressCompromised(newAddress.address);
+    // eslint-disable-next-line @typescript-eslint/no-unused-expressions
+    expect(isCompromised).to.be.true;
+  });
+
+  it('should not allow deleting the sender address', async () => {
+    await expect(ethosProfile.connect(userA.signer).deleteAddress(userA.signer.address, false))
+      .to.be.revertedWithCustomError(ethosProfile, 'AddressAuthorization')
+      .withArgs(userA.signer.address, 'Address == msg.sender');
+  });
+
+  it('should maintain correct indices after deleting addresses', async () => {
+    // Register three addresses
+    const secondAddress = await deployer.newWallet();
+    const thirdAddress = await deployer.newWallet();
+    await userA.registerAddress(newAddress.address);
+    await userA.registerAddress(secondAddress.address);
+    await userA.registerAddress(thirdAddress.address);
+
+    // Delete the middle address
+    await ethosProfile.connect(userA.signer).deleteAddress(secondAddress.address, false);
+
+    // Verify remaining addresses are still accessible
+    const addresses = await ethosProfile.addressesForProfile(userA.profileId);
+    expect(addresses).to.have.lengthOf(3); // Including the original signer address
+    expect(addresses).to.include(newAddress.address);
+    expect(addresses).to.include(thirdAddress.address);
+    expect(addresses).to.not.include(secondAddress.address);
+
+    // Should be able to delete remaining addresses
+    await expect(ethosProfile.connect(userA.signer).deleteAddress(newAddress.address, false)).to.not
+      .be.reverted;
+    await expect(ethosProfile.connect(userA.signer).deleteAddress(thirdAddress.address, false)).to
+      .not.be.reverted;
+  });
+
+  it('should not allow deleting an address from an archived profile', async () => {
+    await userA.registerAddress(newAddress.address);
+    await ethosProfile.connect(userA.signer).archiveProfile();
+
+    await expect(ethosProfile.connect(userA.signer).deleteAddress(newAddress.address, false))
+      .to.be.revertedWithCustomError(ethosProfile, 'ProfileAccess')
+      .withArgs(userA.profileId, 'Profile is archived');
   });
 });

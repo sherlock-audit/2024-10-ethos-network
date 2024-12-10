@@ -1,8 +1,8 @@
-import { loadFixture } from '@nomicfoundation/hardhat-toolbox/network-helpers';
+import { loadFixture } from '@nomicfoundation/hardhat-toolbox/network-helpers.js';
 import { expect } from 'chai';
-import { type EthosReview } from '../../typechain-types';
-import { createDeployer, type EthosDeployer } from '../utils/deployEthos';
-import { type EthosUser } from '../utils/ethosUser';
+import { type EthosReview } from '../../typechain-types/index.js';
+import { createDeployer, type EthosDeployer } from '../utils/deployEthos.js';
+import { type EthosUser } from '../utils/ethosUser.js';
 
 const newComment = 'Updated comment';
 const newMetadata = JSON.stringify({ updatedKey: 'updated value' });

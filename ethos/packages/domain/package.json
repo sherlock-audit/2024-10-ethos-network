@@ -3,23 +3,16 @@
   "version": "1.0.0",
   "description": "Common types, helpers, and constants for Ethos domain model",
   "main": "dist/index.js",
-  "module": "dist/index.mjs",
-  "exports": {
-    ".": {
-      "types": "./dist/index.d.ts",
-      "import": "./dist/index.mjs",
-      "require": "./dist/index.js"
-    }
-  },
+  "type": "module",
   "author": "Ethos Network Inc.",
   "license": "UNLICENSED",
   "scripts": {
-    "build": "tsup --config ../tsup.config.ts",
-    "watch": "tsup --config ../tsup.config.ts --clean false --watch"
+    "build": "tsc -b",
+    "watch": "tsc -w"
   },
   "dependencies": {
     "@ethos/blockchain-manager": "^1.0.0",
     "@ethos/score": "^1.0.0",
-    "viem": "^2.21.7"
+    "viem": "^2.21.51"
   }
 }

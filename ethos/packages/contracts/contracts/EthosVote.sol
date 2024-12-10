@@ -7,7 +7,6 @@ import { AccessControl } from "./utils/AccessControl.sol";
 import { Common } from "./utils/Common.sol";
 import { IEthosProfile } from "./interfaces/IEthosProfile.sol";
 import { ETHOS_PROFILE } from "./utils/Constants.sol";
-import { InvalidTargetContract } from "./errors/VoteErrors.sol";
 import { TargetNotFound } from "./errors/TargetStatusErrors.sol";
 
 /**
@@ -24,6 +23,16 @@ import { TargetNotFound } from "./errors/TargetStatusErrors.sol";
  * - Tracks total votes for each activity item and individual votes per user.
  */
 contract EthosVote is AccessControl, Common, UUPSUpgradeable {
+  /**
+   * @dev Constructor that disables initializers when the implementation contract is deployed.
+   * This prevents the implementation contract from being initialized, which is important for
+   * security since the implementation contract should never be used directly, only through
+   * delegatecall from the proxy.
+   */
+  constructor() {
+    _disableInitializers();
+  }
+
   /**
    * @dev Stores information related to individual votes.
    * @param isUpvote Indicates if the vote is an upvote (true) or a downvote (false).
@@ -68,6 +77,11 @@ contract EthosVote is AccessControl, Common, UUPSUpgradeable {
   // Value: VotesGeneral struct containing aggregated vote data and vote indexes
   mapping(address => mapping(uint256 => VotesGeneral)) private votesGeneralByContractByTargetId;
 
+  // Add storage gap as the last storage variable
+  // This allows us to add new storage variables in future upgrades
+  // by reducing the size of this gap
+  uint256[50] private __gap;
+
   event Voted(
     bool isUpvote,
     uint256 indexed voter,
@@ -84,13 +98,6 @@ contract EthosVote is AccessControl, Common, UUPSUpgradeable {
     uint256 indexed targetId,
     uint256 voteId
   );
-
-  modifier isValidTarget(address target) {
-    if (!contractAddressManager.checkIsEthosContract(target)) {
-      revert InvalidTargetContract(target);
-    }
-    _;
-  }
 
   /**
    * @dev Initializes the contract.
@@ -134,11 +141,7 @@ contract EthosVote is AccessControl, Common, UUPSUpgradeable {
    * @param targetId Target id.
    * @param isUpvote Whether upvote or downvote.
    */
-  function voteFor(
-    address targetContract,
-    uint256 targetId,
-    bool isUpvote
-  ) external whenNotPaused isValidTarget(targetContract) {
+  function voteFor(address targetContract, uint256 targetId, bool isUpvote) external whenNotPaused {
     (bool exists, ) = ITargetStatus(targetContract).targetExistsAndAllowedForId(targetId);
 
     if (!exists) {

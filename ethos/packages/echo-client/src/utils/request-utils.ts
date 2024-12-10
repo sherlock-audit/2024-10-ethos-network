@@ -21,9 +21,9 @@ export class NetError extends Error {
   }
 }
 
-export function getApi(origin: string, defaultOptions?: RequestInit) {
+export function getApi(origin?: string, defaultOptions?: RequestInit) {
   return async function request<R>(pathname: string, options?: RequestInit): Promise<R> {
-    const url = new URL(pathname, origin);
+    const url = origin ? new URL(pathname, origin) : pathname;
 
     const response = await fetch(url, merge(cloneDeep(defaultOptions), options));
 
@@ -45,4 +45,18 @@ export function getApi(origin: string, defaultOptions?: RequestInit) {
 
     return body as R;
   };
+}
+
+/**
+ * Echo API has a standard error response format. This function extracts the
+ * error message from the response body.
+ */
+export function extractEchoErrorMessage(err: unknown): string {
+  let message = 'Something went wrong! Please try again later.';
+
+  if (err instanceof NetError) {
+    message = err.body?.error?.message ?? err.message;
+  }
+
+  return message;
 }

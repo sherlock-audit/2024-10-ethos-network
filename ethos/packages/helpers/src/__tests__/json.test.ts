@@ -1,5 +1,5 @@
 import { z } from 'zod';
-import { parseSafe, replacer, reviver } from '../json';
+import { parseSafe, replacer, reviver } from '../json.js';
 
 describe('replacer/reviver', () => {
   it('should throw an error while trying to stringify BigInt', () => {

@@ -11,6 +11,14 @@ services:
       POSTGRES_USER: postgres
       POSTGRES_PASSWORD: postgres
       POSTGRES_DB: ethos
+  timescaledb:
+    image: timescale/timescaledb:latest-pg16
+    ports:
+      - 5433:5432
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+      POSTGRES_DB: ethos
   rabbitmq:
     build:
       context: .
@@ -36,7 +44,7 @@ services:
   elasticsearch:
     image: elasticsearch:7.17.21
     volumes:
-      - ./.elasticsearch:/etc/elasticsearch
+      - ./.elk/.elasticsearch:/etc/elasticsearch
       - esdata:/usr/share/elasticsearch/data
     ports:
       - "9200:9200"
@@ -53,8 +61,8 @@ services:
   logstash:
     image: logstash:7.17.21
     volumes:
-      - ./.logs/:/var/log/:ro
-      - ./.logstash/pipeline/config.conf:/usr/share/logstash/pipeline/logstash-json.conf:ro
+      - ./.elk/.logs/:/var/log/:ro
+      - ./.elk/.logstash/pipeline/config.conf:/usr/share/logstash/pipeline/logstash-json.conf:ro
     ports:
       - "5001:5001"
     environment:
@@ -70,7 +78,7 @@ services:
   kibana:
     image: kibana:7.17.21
     volumes:
-      - ./.kibana/config/:/usr/share/kibana/config:ro
+      - ./.elk/.kibana/config/:/usr/share/kibana/config:ro
     ports:
       - "5601:5601"
     networks:

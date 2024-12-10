@@ -21,8 +21,6 @@ deploy_contract "contractAddressManager"
 
 # Depends on contractAddressManager
 deploy_contract "interactionControl"
-deploy_contract "escrow"
-deploy_contract "vaultFactory"
 deploy_contract "signatureVerifier"
 
 # Depends on signatureVerifier

@@ -1,5 +1,7 @@
-import { ethers } from 'hardhat';
-import { type Address, zeroAddress } from 'viem';
+import hre from 'hardhat';
+import { zeroAddress } from 'viem';
+
+const { ethers } = hre;
 
 export const MAX_TOTAL_FEES = 10000n;
 
@@ -15,20 +17,18 @@ export const DEFAULT = {
   ATTESTATION_EVIDENCE_0: 'ATTESTATION_EVIDENCE_0',
   ATTESTATION_EVIDENCE_1: 'ATTESTATION_EVIDENCE_1',
   ATTESTATION_HASH: '0x0000000000000000000000000000000000000000000000000000000000000000',
-  ESCROW_TOKEN_ADDRESS: `0xEeeeeEeeeEeEeeEeEeEeeEEEeeeeEeeeeeeeEEeE`,
   PAYMENT_TOKEN: zeroAddress,
   PAYMENT_AMOUNT: ethers.parseEther('0.1'),
   PROVIDER: ethers.provider,
+  EMPTY_BYTES: '0x' + '0'.repeat(64),
 };
 
 export type VouchParams = {
-  paymentToken?: Address;
   paymentAmount?: bigint;
   comment?: string;
   metadata?: string;
 };
 export const VOUCH_PARAMS = {
-  paymentToken: DEFAULT.PAYMENT_TOKEN,
   paymentAmount: DEFAULT.PAYMENT_AMOUNT,
   comment: DEFAULT.COMMENT,
   metadata: DEFAULT.METADATA,
@@ -39,12 +39,16 @@ export type ReviewParams = {
   comment?: string;
   metadata?: string;
   address?: string;
+  paymentToken?: string;
   attestationDetails?: { account: string; service: string };
+  value?: bigint;
 };
 export const REVIEW_PARAMS = {
   score: 2,
   comment: 'Great user!',
   metadata: '{"description": "😻"}',
   address: zeroAddress,
+  paymentToken: DEFAULT.PAYMENT_TOKEN,
   attestationDetails: { account: '', service: '' },
+  value: 0n,
 };

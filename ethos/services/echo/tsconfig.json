@@ -1,0 +1,14 @@
+{
+  "extends": "../../tsconfig.json",
+  "compilerOptions": {
+    "outDir": "dist"
+  },
+  "include": [
+    "src/**/*.ts",
+    "src/types/**/*.d.ts"
+  ],
+  "ts-node": {
+    // Hardhat ESM support: https://github.com/NomicFoundation/hardhat/issues/3385
+    "experimentalResolver": true
+  }
+}
