@@ -7,6 +7,7 @@ import { UUPSUpgradeable } from "@openzeppelin/contracts-upgradeable/proxy/utils
 import { ETHOS_REVIEW, ETHOS_ATTESTATION } from "./utils/Constants.sol";
 import { AccessControl } from "./utils/AccessControl.sol";
 import { ProfileNotFound, ProfileExists, ProfileNotFoundForAddress, AddressCompromised, AddressAlreadyInvited, MaxInvitesReached, MaxAddressesReached, ProfileExistsForAddress, ProfileAccess, AddressAuthorization, InsufficientInvites, AddressNotInvited, InvalidSender, InvalidIndex } from "./errors/ProfileErrors.sol";
+import { Common } from "./utils/Common.sol";
 
 /**
  * @title EthosProfile
@@ -42,7 +43,17 @@ import { ProfileNotFound, ProfileExists, ProfileNotFoundForAddress, AddressCompr
  * - A mock ID is an empty, non-user profile used to track these activity items. This ensures reviews and attestations for the same
  *   subject are linked together with a distinct ID.
  */
-contract EthosProfile is IEthosProfile, ITargetStatus, AccessControl, UUPSUpgradeable {
+contract EthosProfile is IEthosProfile, ITargetStatus, AccessControl, UUPSUpgradeable, Common {
+  /**
+   * @dev Constructor that disables initializers when the implementation contract is deployed.
+   * This prevents the implementation contract from being initialized, which is important for
+   * security since the implementation contract should never be used directly, only through
+   * delegatecall from the proxy.
+   */
+  constructor() {
+    _disableInitializers();
+  }
+
   enum AddressClaimStatus {
     Unclaimed,
     Claimed
@@ -55,14 +66,19 @@ contract EthosProfile is IEthosProfile, ITargetStatus, AccessControl, UUPSUpgrad
 
   // Stores profile information, where the key is the profile ID, and the value is the Profile struct.
   mapping(uint256 => Profile) private profiles;
-  // Maps a user's address to their profile ID for quick lookups.
+  // Maps a user's address to their profile ID for quick lookups. This includes removed addresses; do not rely on it for verification.
   mapping(address => uint256) public profileIdByAddress;
-  // Keeps track of addresses that are compromised, preventing certain actions from being taken by these addresses.
+  // Keeps track of addresses that have been removed from a profile, preventing certain actions from being taken by these addresses.
   mapping(address => bool) public isAddressCompromised;
   // Maps an attestation hash to a profile ID, linking attestations to profiles.
   mapping(bytes32 => uint256) public profileIdByAttestation;
   // Tracks the timestamp at which a specific user was invited by a profile.
   mapping(uint256 => mapping(address => uint256)) public sentAt;
+
+  // Add storage gap as the last storage variable
+  // This allows us to add new storage variables in future upgrades
+  // by reducing the size of this gap
+  uint256[50] private __gap;
 
   event MockProfileCreated(uint256 indexed mockId);
   event ProfileCreated(uint256 indexed profileId, address indexed addr);
@@ -90,21 +106,11 @@ contract EthosProfile is IEthosProfile, ITargetStatus, AccessControl, UUPSUpgrad
     _;
   }
 
-  modifier checkIfCompromised(address addr) {
+  modifier onlyNonCompromisedAddress(address addr) {
     if (isAddressCompromised[addr]) {
       revert AddressCompromised(addr);
     }
     _;
-  }
-
-  /**
-   * @dev Retrieves a profile by its ID.
-   * @param id The profile ID to retrieve.
-   * @return profile The Profile struct associated with the given ID.
-   */
-  function getProfile(uint256 id) external view returns (Profile memory profile) {
-    if (id == 0 || id >= profileCount) revert ProfileNotFound(id);
-    profile = profiles[id];
   }
 
   /**
@@ -155,7 +161,9 @@ contract EthosProfile is IEthosProfile, ITargetStatus, AccessControl, UUPSUpgrad
    * @notice This function can only be called by an address that has been invited by an existing profile.
    * The inviter must have available invites and their profile must be active.
    */
-  function createProfile(uint256 inviterId) external whenNotPaused {
+  function createProfile(
+    uint256 inviterId
+  ) external whenNotPaused onlyNonCompromisedAddress(msg.sender) {
     (
       bool inviteSenderVerified,
       bool inviteSenderArchived,
@@ -172,34 +180,6 @@ contract EthosProfile is IEthosProfile, ITargetStatus, AccessControl, UUPSUpgrad
   }
 
   /**
-   * @dev Internal function for setting up new profile
-   * @param user Address of the new user creating profile.
-   * @return profileId The ID of the newly created profile
-   * @notice This function handles the core logic of profile creation, including
-   * assigning a new profile ID and initializing the profile's invite information.
-   */
-  function _createProfile(address user) internal returns (uint256 profileId) {
-    (bool verified, , bool mock, uint256 existingProfileId) = profileStatusByAddress(user);
-    if (verified) {
-      revert ProfileExists(existingProfileId);
-    } else if (mock) {
-      profileId = existingProfileId;
-    } else {
-      profileId = profileCount;
-      profileCount++;
-    }
-
-    profileIdByAddress[user] = profileId;
-    profiles[profileId].profileId = profileId;
-    profiles[profileId].createdAt = block.timestamp;
-    profiles[profileId].inviteInfo.available = defaultNumberOfInvites;
-    profiles[profileId].addresses.push(user);
-
-    emit ProfileCreated(profileId, user);
-    return profileId;
-  }
-
-  /**
    * @dev Enables user to authorize the address of an invitee to create a profile
    * @param invitee Address of user invited to ETHOS
    * @notice This function checks if the sender has available invites and if the invitee
@@ -207,19 +187,19 @@ contract EthosProfile is IEthosProfile, ITargetStatus, AccessControl, UUPSUpgrad
    */
   function inviteAddress(
     address invitee
-  ) public whenNotPaused onlyNonZeroAddress(invitee) checkIfCompromised(invitee) {
-    (bool verified, bool archived, bool mock, uint256 profileId) = profileStatusByAddress(
-      msg.sender
-    );
+  ) public whenNotPaused onlyNonZeroAddress(invitee) onlyNonCompromisedAddress(invitee) {
+    (bool verified, bool archived, bool mock, ) = profileStatusByAddress(msg.sender);
 
     if (!verified || archived || mock) {
       revert InvalidSender();
     }
 
+    // because profileStatusByAddress does not check if the address has been removed,
+    // this will prevent invitations being sent to removed addresses
     (bool recipientExists, , bool recipientMock, ) = profileStatusByAddress(invitee);
 
     if (recipientExists && !recipientMock) {
-      revert ProfileExists(profileId);
+      revert ProfileExistsForAddress(invitee);
     }
 
     uint256 profile = profileIdByAddress[msg.sender];
@@ -258,20 +238,24 @@ contract EthosProfile is IEthosProfile, ITargetStatus, AccessControl, UUPSUpgrad
   function uninviteUser(address user) external onlyNonZeroAddress(user) {
     uint256 id = profileIdByAddress[msg.sender];
     Profile storage inviter = profiles[id];
+    if (inviter.archived) {
+      revert ProfileAccess(id, "Profile is archived");
+    }
 
     uint256 index = sentInviteIndexByProfileIdAndAddress[id][user];
     if (index >= inviter.inviteInfo.sent.length || inviter.inviteInfo.sent[index] != user) {
       revert AddressNotInvited();
     }
 
-    // Move the last element to the removed position
-    uint256 lastIndex = inviter.inviteInfo.sent.length - 1;
-    address lastAddress = inviter.inviteInfo.sent[lastIndex];
-    inviter.inviteInfo.sent[index] = lastAddress;
-    sentInviteIndexByProfileIdAndAddress[id][lastAddress] = index;
+    // Get last address before removing from array (needed for updating index mapping)
+    address lastAddress = inviter.inviteInfo.sent[inviter.inviteInfo.sent.length - 1];
 
-    // Remove the last element
-    inviter.inviteInfo.sent.pop();
+    _removeFromArray(index, inviter.inviteInfo.sent);
+
+    // Update the index mapping for the moved address
+    if (lastAddress != user) {
+      sentInviteIndexByProfileIdAndAddress[id][lastAddress] = index;
+    }
     delete sentInviteIndexByProfileIdAndAddress[id][user];
 
     inviter.inviteInfo.available++;
@@ -291,7 +275,7 @@ contract EthosProfile is IEthosProfile, ITargetStatus, AccessControl, UUPSUpgrad
     bool isAttestation,
     address subject,
     bytes32 attestation
-  ) external whenNotPaused returns (uint256 profileId) {
+  ) external whenNotPaused onlyNonCompromisedAddress(subject) returns (uint256 profileId) {
     if (
       msg.sender != contractAddressManager.getContractAddressForName(ETHOS_REVIEW) &&
       msg.sender != contractAddressManager.getContractAddressForName(ETHOS_ATTESTATION)
@@ -318,7 +302,7 @@ contract EthosProfile is IEthosProfile, ITargetStatus, AccessControl, UUPSUpgrad
   function assignExistingProfileToAttestation(
     bytes32 attestationHash,
     uint256 profileId
-  ) external isEthosAttestation {
+  ) external isEthosAttestation whenNotPaused {
     profileIdByAttestation[attestationHash] = profileId;
   }
 
@@ -375,18 +359,18 @@ contract EthosProfile is IEthosProfile, ITargetStatus, AccessControl, UUPSUpgrad
     uint256 profileId,
     uint256 randValue,
     bytes calldata signature
-  ) external whenNotPaused onlyNonZeroAddress(addressStr) {
+  ) external whenNotPaused onlyNonZeroAddress(addressStr) onlyNonCompromisedAddress(addressStr) {
+    // the target profile must contain the msg.sender address among the list of valid, non-removed addresses
+    if (profileIdByAddress[msg.sender] != profileId) {
+      revert ProfileNotFoundForAddress(msg.sender);
+    }
+
     (bool verified, bool archived, bool mock) = profileStatusById(profileId);
     if (!verified) {
       revert ProfileNotFound(profileId);
     }
     if (archived || mock) {
       revert ProfileAccess(profileId, "Profile is archived");
-    }
-    // you may restore your own previously deleted address,
-    // but you cannot register an address that has been deleted by another user
-    if (profileIdByAddress[addressStr] != profileId && isAddressCompromised[addressStr]) {
-      revert AddressCompromised(addressStr);
     }
     (bool addressAlreadyRegistered, , , uint256 registeredProfileId) = profileStatusByAddress(
       addressStr
@@ -400,6 +384,7 @@ contract EthosProfile is IEthosProfile, ITargetStatus, AccessControl, UUPSUpgrad
       signature
     );
 
+    addressIndexByProfileIdAndAddress[profileId][addressStr] = profiles[profileId].addresses.length;
     profiles[profileId].addresses.push(addressStr);
     profileIdByAddress[addressStr] = profileId;
 
@@ -408,11 +393,20 @@ contract EthosProfile is IEthosProfile, ITargetStatus, AccessControl, UUPSUpgrad
     emit AddressClaim(profileId, addressStr, AddressClaimStatus.Claimed);
   }
 
+  function deleteAddress(address addressStr, bool markAsCompromised) external whenNotPaused {
+    uint256 profileId = profileIdByAddress[msg.sender];
+    uint256 index = addressIndexByProfileIdAndAddress[profileId][addressStr];
+    deleteAddressAtIndex(index, markAsCompromised);
+  }
+
   /**
    * @dev Deletes an address at index.
+   * @notice Deleted addresses can be re-registered to any profile.
+   * @notice Compromised addresses cannot be re-registered. Only an admin can revoke compromised addresses.
    * @param addressIndex Index of address to be archived.
+   * @param markAsCompromised Whether to mark the address as compromised.
    */
-  function deleteAddressAtIndex(uint256 addressIndex) external whenNotPaused {
+  function deleteAddressAtIndex(uint256 addressIndex, bool markAsCompromised) public whenNotPaused {
     uint256 profileId = profileIdByAddress[msg.sender];
     (bool verified, bool archived, bool mock) = profileStatusById(profileId);
     if (!verified) {
@@ -423,18 +417,40 @@ contract EthosProfile is IEthosProfile, ITargetStatus, AccessControl, UUPSUpgrad
     }
 
     address[] storage addresses = profiles[profileId].addresses;
-    address[] storage removedAddresses = profiles[profileId].removedAddresses;
     if (addresses.length <= addressIndex) {
       revert InvalidIndex();
     }
 
     address addressStr = addresses[addressIndex];
-    isAddressCompromised[addressStr] = true;
     _addressShouldDifferFromSender(addressStr);
 
-    _deleteAddressAtIndexFromArray(addressIndex, addresses, removedAddresses);
+    if (markAsCompromised) {
+      isAddressCompromised[addressStr] = true;
+    }
+
+    _deleteAddressAtIndexFromArray(addressIndex, addresses);
+    delete profileIdByAddress[addressStr];
 
     emit AddressClaim(profileId, addressStr, AddressClaimStatus.Unclaimed);
+  }
+
+  /**
+   * @dev Restores a compromised address.
+   * @notice Only callable by an admin.
+   * @param addressStr Address to be restored.
+   */
+  function restoreCompromisedAddress(address addressStr) external onlyAdmin whenNotPaused {
+    isAddressCompromised[addressStr] = false;
+  }
+
+  /**
+   * @dev Retrieves a profile by its ID.
+   * @param id The profile ID to retrieve.
+   * @return profile The Profile struct associated with the given ID.
+   */
+  function getProfile(uint256 id) external view returns (Profile memory profile) {
+    if (id == 0 || id >= profileCount) revert ProfileNotFound(id);
+    profile = profiles[id];
   }
 
   /**
@@ -502,6 +518,7 @@ contract EthosProfile is IEthosProfile, ITargetStatus, AccessControl, UUPSUpgrad
     uint256 profileId
   ) public view returns (bool verified, bool archived, bool mock) {
     Profile storage profile = profiles[profileId];
+    // mock profileIds do not have a profile struct, and so this returns false
     verified = profile.profileId > 0;
     archived = verified && profile.archived;
     mock = profileId > 0 && !verified && profileId < profileCount;
@@ -509,6 +526,8 @@ contract EthosProfile is IEthosProfile, ITargetStatus, AccessControl, UUPSUpgrad
 
   /**
    * @dev Returns the status of a profile by its associated address.
+   * @notice This does not check if the address has been removed from the profile.
+   * It will return the profileId even if the address has been removed.
    * @param addressStr The address to check.
    * @return verified Whether the profile is verified.
    * @return archived Whether the profile is archived.
@@ -540,24 +559,11 @@ contract EthosProfile is IEthosProfile, ITargetStatus, AccessControl, UUPSUpgrad
   }
 
   /**
-   * @dev Checks if an address is compromised.
-   * @param addressStr The address to check.
-   * @return Whether the address is compromised.
-   */
-  function checkIsAddressCompromised(address addressStr) public view returns (bool) {
-    if (isAddressCompromised[addressStr]) {
-      revert AddressCompromised(addressStr);
-    }
-    return false;
-  }
-
-  /**
    * LEGACY INTERFACE FUNCTIONS
    *
    * These satisfy the IEthosProfile interface but are more difficult to understand than profileStatus* functions
    * and should be deprecated on the next major upgrade.
    */
-
   function profileExistsAndArchivedForId(
     uint256 profileId
   ) external view returns (bool verified, bool archived) {
@@ -579,17 +585,19 @@ contract EthosProfile is IEthosProfile, ITargetStatus, AccessControl, UUPSUpgrad
    * @dev Deletes address at index.
    * @param index Index of address to be deleted.
    * @param addresses Address array to be modified.
-   * @param removedAddresses Array to store removed addresses.
    */
-  function _deleteAddressAtIndexFromArray(
-    uint256 index,
-    address[] storage addresses,
-    address[] storage removedAddresses
-  ) private {
-    address addr = addresses[addresses.length - 1];
-    addresses[index] = addr;
-    removedAddresses.push(addr);
-    addresses.pop();
+  function _deleteAddressAtIndexFromArray(uint256 index, address[] storage addresses) private {
+    address addressToRemove = addresses[index];
+    address lastAddress = addresses[addresses.length - 1];
+
+    _removeFromArray(index, addresses);
+
+    if (lastAddress != addressToRemove) {
+      uint256 profileId = profileIdByAddress[msg.sender];
+      addressIndexByProfileIdAndAddress[profileId][lastAddress] = index;
+    }
+
+    delete addressIndexByProfileIdAndAddress[profileIdByAddress[msg.sender]][addressToRemove];
   }
 
   /**
@@ -626,6 +634,34 @@ contract EthosProfile is IEthosProfile, ITargetStatus, AccessControl, UUPSUpgrad
   }
 
   /**
+   * @dev Internal function for setting up new profile
+   * @param user Address of the new user creating profile.
+   * @return profileId The ID of the newly created profile
+   * @notice This function handles the core logic of profile creation, including
+   * assigning a new profile ID and initializing the profile's invite information.
+   */
+  function _createProfile(address user) internal returns (uint256 profileId) {
+    (bool verified, , bool mock, uint256 existingProfileId) = profileStatusByAddress(user);
+    if (verified) {
+      revert ProfileExists(existingProfileId);
+    } else if (mock) {
+      profileId = existingProfileId;
+    } else {
+      profileId = profileCount;
+      profileCount++;
+    }
+
+    profileIdByAddress[user] = profileId;
+    profiles[profileId].profileId = profileId;
+    profiles[profileId].createdAt = block.timestamp;
+    profiles[profileId].inviteInfo.available = defaultNumberOfInvites;
+    profiles[profileId].addresses.push(user);
+
+    emit ProfileCreated(profileId, user);
+    return profileId;
+  }
+
+  /**
    * @dev Checks if new user has been authorized by inviter for profile creation
    * @param inviterId profile ID of inviting user
    * @param user address of new user attempting to create profile
@@ -638,14 +674,13 @@ contract EthosProfile is IEthosProfile, ITargetStatus, AccessControl, UUPSUpgrad
       revert AddressNotInvited();
     }
 
-    // Move the last element to the removed position
-    uint256 lastIndex = inviter.inviteInfo.sent.length - 1;
-    address lastAddress = inviter.inviteInfo.sent[lastIndex];
-    inviter.inviteInfo.sent[index] = lastAddress;
-    sentInviteIndexByProfileIdAndAddress[inviterId][lastAddress] = index;
+    // Update the index mapping for the moved address
+    address lastAddress = inviter.inviteInfo.sent[inviter.inviteInfo.sent.length - 1];
+    if (lastAddress != user) {
+      sentInviteIndexByProfileIdAndAddress[inviterId][lastAddress] = index;
+    }
 
-    // Remove the last element
-    inviter.inviteInfo.sent.pop();
+    _removeFromArray(index, inviter.inviteInfo.sent);
     delete sentInviteIndexByProfileIdAndAddress[inviterId][user];
   }
 
@@ -668,7 +703,7 @@ contract EthosProfile is IEthosProfile, ITargetStatus, AccessControl, UUPSUpgrad
    * @dev Modifies default number of invites new profiles start with
    * @param defaultInvites new default invite amount
    */
-  function setDefaultNumberOfInvites(uint256 defaultInvites) external onlyAdmin {
+  function setDefaultNumberOfInvites(uint256 defaultInvites) external onlyAdmin whenNotPaused {
     defaultNumberOfInvites = defaultInvites;
     if (defaultInvites > maxNumberOfInvites) {
       revert MaxInvitesReached(0);
@@ -681,7 +716,7 @@ contract EthosProfile is IEthosProfile, ITargetStatus, AccessControl, UUPSUpgrad
    * @param user address of profile
    * @param amount quantity of invites to add to the profile
    */
-  function addInvites(address user, uint256 amount) public onlyAdmin {
+  function addInvites(address user, uint256 amount) public onlyAdmin whenNotPaused {
     (bool verified, bool archived, bool mock, uint256 id) = profileStatusByAddress(user);
     if (!verified || archived || mock) {
       revert ProfileNotFoundForAddress(user);
@@ -697,7 +732,10 @@ contract EthosProfile is IEthosProfile, ITargetStatus, AccessControl, UUPSUpgrad
    * @param users array of addresses to add invites
    * @param amount quantity of invites to add to the profiles
    */
-  function addInvitesBatch(address[] calldata users, uint256 amount) external onlyAdmin {
+  function addInvitesBatch(
+    address[] calldata users,
+    uint256 amount
+  ) external onlyAdmin whenNotPaused {
     for (uint256 i; i < users.length; i++) {
       addInvites(users[i], amount);
     }
@@ -731,7 +769,6 @@ contract EthosProfile is IEthosProfile, ITargetStatus, AccessControl, UUPSUpgrad
    */
   function checkMaxAddresses(uint256 profileId) internal view {
     uint256 sum = profiles[profileId].addresses.length;
-    sum += profiles[profileId].removedAddresses.length;
     if (sum > maxNumberOfAddresses) {
       revert MaxAddressesReached(profileId);
     }
@@ -741,7 +778,7 @@ contract EthosProfile is IEthosProfile, ITargetStatus, AccessControl, UUPSUpgrad
    * @dev Sets the maximum number of addresses allowed per profile
    * @param maxAddresses The new maximum number of addresses
    */
-  function setMaxAddresses(uint256 maxAddresses) external onlyAdmin {
+  function setMaxAddresses(uint256 maxAddresses) external onlyAdmin whenNotPaused {
     maxNumberOfAddresses = maxAddresses;
     if (maxAddresses > 2048) {
       revert MaxAddressesReached(0);
@@ -752,7 +789,7 @@ contract EthosProfile is IEthosProfile, ITargetStatus, AccessControl, UUPSUpgrad
    * @dev Sets the maximum number of invites allowed per profile
    * @param maxInvites The new maximum number of invites
    */
-  function setMaxInvites(uint256 maxInvites) external onlyAdmin {
+  function setMaxInvites(uint256 maxInvites) external onlyAdmin whenNotPaused {
     maxNumberOfInvites = maxInvites;
     if (maxInvites > 2048) {
       revert MaxInvitesReached(0);
@@ -770,4 +807,6 @@ contract EthosProfile is IEthosProfile, ITargetStatus, AccessControl, UUPSUpgrad
   // Maps inviter profileId -> invited profileId -> index in the acceptedIds array
   // This ended up being unused in the final implementation
   mapping(uint256 => mapping(uint256 => uint256)) private acceptedIdIndexByProfileIdAndId;
+  // Maps profileId -> address -> index in the addresses array
+  mapping(uint256 => mapping(address => uint256)) private addressIndexByProfileIdAndAddress;
 }

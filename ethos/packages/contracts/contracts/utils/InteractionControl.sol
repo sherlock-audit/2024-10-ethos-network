@@ -15,6 +15,11 @@ contract InteractionControl is Ownable {
 
   string[] private controlledContractNames;
 
+  // Add storage gap as the last storage variable
+  // This allows us to add new storage variables in future upgrades
+  // by reducing the size of this gap
+  uint256[50] private __gap;
+
   /**
    * @dev Constructor.
    * @param owner Owner address.
@@ -120,7 +125,9 @@ contract InteractionControl is Ownable {
    * @param contractAddress The address of the contract to be paused.
    */
   function _pauseContract(address contractAddress) private {
-    IPausable(contractAddress).pause();
+    if (!IPausable(contractAddress).paused()) {
+      IPausable(contractAddress).pause();
+    }
   }
 
   /**
@@ -128,6 +135,8 @@ contract InteractionControl is Ownable {
    * @param contractAddress The address of the contract to be unpaused.
    */
   function _unpauseContract(address contractAddress) private {
-    IPausable(contractAddress).unpause();
+    if (IPausable(contractAddress).paused()) {
+      IPausable(contractAddress).unpause();
+    }
   }
 }
