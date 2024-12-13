@@ -34,8 +34,6 @@ import { Common } from "./utils/Common.sol";
  * Multiple Addresses:
  * - Users are encouraged to register different addresses with their profile ID.
  * - In case of account compromises, a profile can unregister an account and mark it as compromised.
- * - After registration, an address can never again be registered to another profile, even if it is archived.
- * - Unregistered accounts still remain associated with their original profile for historical tracking.
  *
  * Mock Profiles:
  * - In addition to user profiles, EthosProfile is used to track reviews (from EthosReview.sol) and attestations (from EthosAttestation.sol)

@@ -463,6 +463,16 @@ contract EthosReview is AccessControl, Common, ITargetStatus, UUPSUpgradeable {
     }
   }
 
+  function _onlyReviewAuthor(uint256 reviewId) private view {
+    uint256 senderProfileId = _getEthosProfile().verifiedProfileIdForAddress(msg.sender);
+    uint256 authorProfileId = _getEthosProfile().verifiedProfileIdForAddress(
+      reviews[reviewId].author
+    );
+    if (senderProfileId != authorProfileId) {
+      revert UnauthorizedEdit(reviewId);
+    }
+  }
+
   /**
    * @dev Returns reviews in range.
    * @param maxLength Maximum length of items to return.
